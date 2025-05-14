@@ -1,0 +1,77 @@
+import pyControl.utility as pc
+from devices import Breakout_1_2, Poke
+
+# Define hardware
+board = Breakout_1_2()
+right_port = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
+left_port = Poke(board.port_3, rising_event="left_poke", falling_event="left_poke_out")
+
+# State machine
+states = ["wait_for_poke", "left_reward", "right_reward", "inter_trial_interval"]
+
+events = ["poke", "right_poke", "left_poke", "right_poke_out", "left_poke_out", "session_timer"]
+
+initial_state = "wait_for_poke"
+
+
+# Parameters.
+pc.v.session_duration = 1 * pc.hour  # Session duration.
+pc.v.reward_durations = [100, 100]  # Reward delivery duration (ms) [left, right].
+pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
+
+# Variables.
+pc.v.n_rewards = 0  # Number of rewards obtained.
+
+
+# These funcs are auto-run at beginning + end
+def run_start():
+    # Set session timer and turn on houslight.
+    pc.set_timer("session_timer", pc.v.session_duration)
+
+def run_end():
+    # Turn off all hardware outputs.
+    right_port.SOL.off()
+    left_port.SOL.off()
+
+    # Do whatever else...save data maybe?
+    pass
+
+
+### State behaviour functions ###
+
+def wait_for_poke(event):
+    if event == "right_poke":
+        pc.goto_state("right_reward")
+    elif event == "left_poke":
+        pc.goto_state("left_reward")
+
+
+def left_reward(event):
+    # Deliver reward to left poke.
+    if event == "entry":
+        pc.timed_goto_state("inter_trial_interval", pc.v.reward_durations[0])
+        left_port.SOL.on()
+    elif event == "exit":
+        left_port.SOL.off()
+
+
+def right_reward(event):
+    # Deliver reward to right poke.
+    if event == "entry":
+        pc.timed_goto_state("inter_trial_interval", pc.v.reward_durations[1])
+        right_port.SOL.on()
+    elif event == "exit":
+        pc.right_poke.SOL.off()
+
+
+def inter_trial_interval(event):
+    # Go to init trial after specified delay.
+    if event == "entry":
+        pc.timed_goto_state("wait_for_poke", pc.v.ITI_duration)
+
+
+# State independent behaviour.
+def all_states(event):
+    # When 'session_timer' event occurs stop framework to end session.
+    if event == "session_timer":
+        pc.stop_framework()
