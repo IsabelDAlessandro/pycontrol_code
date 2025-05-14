@@ -13,3 +13,5 @@ hardware_definitions/
 
 tasks/
 !tasks/example
+
+.DS_Store
