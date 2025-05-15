@@ -16,8 +16,9 @@ initial_state = "wait_for_poke"
 
 # Parameters.
 pc.v.session_duration = 1 * pc.hour  # Session duration.
-pc.v.reward_durations = [100, 100]  # Reward delivery duration (ms) [left, right].
+pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
+pc.v.reward_dur_multiplier = 1  # adjust per mouse; increase if not interested
 
 # Variables.
 pc.v.n_rewards = 0  # Number of rewards obtained.
@@ -42,14 +43,16 @@ def run_end():
 def wait_for_poke(event):
     if event == "right_poke":
         pc.goto_state("right_reward")
+        pc.v.n_rewards += 1
     elif event == "left_poke":
         pc.goto_state("left_reward")
+        pc.v.n_rewards += 1
 
 
 def left_reward(event):
     # Deliver reward to left poke.
     if event == "entry":
-        pc.timed_goto_state("inter_trial_interval", pc.v.reward_durations[0])
+        pc.timed_goto_state("inter_trial_interval", pc.v.reward_dur_multiplier * pc.v.reward_durations[0])
         left_port.SOL.on()
     elif event == "exit":
         left_port.SOL.off()
@@ -58,10 +61,10 @@ def left_reward(event):
 def right_reward(event):
     # Deliver reward to right poke.
     if event == "entry":
-        pc.timed_goto_state("inter_trial_interval", pc.v.reward_durations[1])
+        pc.timed_goto_state("inter_trial_interval", pc.v.reward_dur_multiplier * pc.v.reward_durations[1])
         right_port.SOL.on()
     elif event == "exit":
-        pc.right_poke.SOL.off()
+        right_port.SOL.off()
 
 
 def inter_trial_interval(event):
