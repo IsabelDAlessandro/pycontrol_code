@@ -5,9 +5,9 @@ from devices import *
 
 # Instantiate Devices.
 board = Breakout_1_2()
-left_poke = Poke(board.port_1, rising_event="left_poke", falling_event="left_poke_out")
-center_poke = Poke(board.port_2, rising_event="center_poke", falling_event="center_poke_out")
-right_poke = Poke(board.port_3, rising_event="right_poke", falling_event="right_poke_out")
+left_poke = Poke(board.port_3, rising_event="left_poke", falling_event="left_poke_out")
+center_poke = Poke(board.port_4, rising_event="center_poke", falling_event="center_poke_out")
+right_poke = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
 
 # States and events.
 
@@ -31,7 +31,7 @@ events = [
 initial_state = "init_state"
 
 # Variables
-v.rwd_durations = [50, 50]  # Reward delivery duration (ms) [left, right].
+v.rwd_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 v.n_rwds_for_calibration = 100
 v.current_rwd = 0  # Current reward number
 
@@ -85,7 +85,7 @@ def left_calibration(event):
     if event == "entry":
         if v.current_rwd >= v.n_rwds_for_calibration:
             # Stop calibration after n rewards.
-            goto_state("init_state")
+            timed_goto_state("init_state", 100)
         else:
             left_poke.SOL.on()
             v.current_rwd += 1
@@ -99,13 +99,18 @@ def left_wait(event):
 
 
 def right_calibration(event):
-    # Trigger right solenoid while center poke IR beam remains broken.
+     # Trigger right solenoid while center poke IR beam remains broken.
     if event == "entry":
-        v.current_rwd += 1
-        right_poke.SOL.on()
-        timed_goto_state("right_wait", v.rwd_durations[1])
+        if v.current_rwd >= v.n_rwds_for_calibration:
+            # Stop calibration after n rewards.
+            timed_goto_state("init_state", 100)
+        else:
+            right_poke.SOL.on()
+            v.current_rwd += 1
+            timed_goto_state("right_wait", v.rwd_durations[1])
     elif event == "exit":
         right_poke.SOL.off()
+
 
 def right_wait(event):
     if event == "entry":
