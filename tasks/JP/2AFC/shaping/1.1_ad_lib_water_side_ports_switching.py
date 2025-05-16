@@ -18,13 +18,23 @@ initial_state = "wait_for_poke"
 pc.v.session_duration = 0.5 * pc.hour  # Session duration.
 pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.ITI_duration = 2 * pc.second  # Inter trial interval duration.
-pc.v.n_rwds_per_block = 6
+pc.v.n_allowed_rwds_per_block_mean = 4
+pc.v.n_allowed_rwds_per_block_max = 10
 pc.v.n_allowed_rwds = 100
 
 # Variables.
 pc.v.rewarded_side = "left"  # initial; will be changed betw left and right
 pc.v.n_rewards = 0  # Number of rewards obtained.
 pc.v.n_rewards_in_block = 0
+
+def get_new_rwds_in_block():
+    v = min(
+        int(round(pc.exp_rand(pc.v.n_allowed_rwds_per_block_mean), 0)),
+        pc.v.n_allowed_rwds_per_block_max
+    )
+    v = max(v, 1)
+    return v
+pc.v.n_allowed_rwds_per_block = get_new_rwds_in_block()
 
 # These funcs are auto-run at beginning + end
 def run_start():
@@ -42,9 +52,10 @@ def run_end():
 def is_rewarded(side):
     if side == pc.v.rewarded_side:
         pc.v.n_rewards_in_block += 1
-        if pc.v.n_rewards_in_block >= pc.v.n_rwds_per_block:
+        if pc.v.n_rewards_in_block >= pc.v.n_allowed_rwds_per_block:
             pc.v.rewarded_side = "left" if (pc.v.rewarded_side == "right") else "right"
             pc.v.n_rewards_in_block = 0
+            pc.v.n_allowed_rwds_per_block = get_new_rwds_in_block()
         outcome = 1
     else:
         outcome = 0
