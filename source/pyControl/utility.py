@@ -174,6 +174,21 @@ class Exp_mov_ave:
 
 exp_mov_ave = Exp_mov_ave  # For backward compatibility.
 
+from collections import deque
+class OnlineMovingAverage:
+    def __init__(self, w):
+        self.w = w
+        self.queue = deque((), self.w)
+        self.cumulative_sum = 0.0
+        self.ave = 0
+        for i in range(w):
+            self.queue.append(0)
+    def add(self, value):
+        self.cumulative_sum -= self.queue.popleft()
+        self.queue.append(value)
+        self.cumulative_sum += value
+        self.ave = self.cumulative_sum / self.w
+    
 # Units -----------------------------------------------------------------------
 
 ms = const(1)
