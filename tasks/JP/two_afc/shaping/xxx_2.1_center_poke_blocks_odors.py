@@ -46,6 +46,7 @@ pc.v.correct_mov_ave = pc.Exp_mov_ave(tau=10, init_value=0.5)  # Moving average 
 pc.v.ave_correct = 0.5
 
 
+### Helper functions for rwds ###
 def get_new_rwds_in_block():
     v = min(
         int(round(pc.gauss_rand(pc.v.n_allowed_rwds_per_block_mean, 1), 0)),
@@ -73,6 +74,7 @@ def is_rewarded(side):
     pc.v.correct_mov_ave.update(pc.v.outcome)
     pc.v.ave_correct = pc.v.correct_mov_ave.value
     return pc.v.outcome
+
 
 ### State behaviour functions ###
 
