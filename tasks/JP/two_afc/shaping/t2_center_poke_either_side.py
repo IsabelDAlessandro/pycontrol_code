@@ -46,6 +46,7 @@ def run_end():
     right_port.SOL.off()
     left_port.SOL.off()
     center_port.LED.off()
+    disable_odor_valves()
 
     # Do whatever else...save data maybe?
     pass
@@ -61,6 +62,15 @@ def is_rewarded(side):
     pc.v.ave_correct_tracker.add(1)
     return pc.v.outcome
 
+
+def set_odor_valves():
+    pass
+
+def disable_odor_valves():
+    pass
+
+def do_other_ITI_logic():
+    pass
 
 # State-independent behaviour.
 def all_states(event):
@@ -81,6 +91,7 @@ def wait_for_center_poke(event):
     if event == "entry":
         center_port.LED.on()
         pc.v.entry_time = pc.get_current_time()  # Start early-error buffer
+        set_odor_valves()
     
     # If mouse pokes either side port *after* the early-error buffer
     # has elapsed, then timeout and restart the trial.
@@ -89,6 +100,7 @@ def wait_for_center_poke(event):
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
+        disable_odor_valves()
         pc.goto_state("timeout")
 
     # If ms is still licking at reward port, then restart the 
@@ -114,19 +126,21 @@ def deliver_odor(event):
         pc.timed_goto_state("wait_for_side_poke", pc.v.odor_delivery_duration)
     elif event == "exit":
         final_valve.off()
+        disable_odor_valves()
 
 
 def wait_for_side_poke(event):
-    if event == "entry":
-        center_port.LED.off()
-
-    elif event == "right_poke":
+    if event == "right_poke":
         if is_rewarded("right"):
             pc.goto_state("right_reward")
+        else:
+            pc.goto_state("timeout")
 
     elif event == "left_poke":
         if is_rewarded("left"):
             pc.goto_state("left_reward")
+        else:
+            pc.goto_state("timeout")
 
 
 def left_reward(event):
@@ -161,6 +175,8 @@ def inter_trial_interval(event):
         # the reward, without having to restart the entire ITI state, 
         # which would require lots of flags to only update things once, 
         # and would be generally confusing.
+        final_valve.on()
+        pc.set_timer("close_final_valve", (pc.v.ITI_duration - 0.5))
         pc.set_timer("finish_ITI", pc.v.ITI_duration)
         pc.v.entry_time = pc.get_current_time()
 
@@ -175,6 +191,9 @@ def inter_trial_interval(event):
             and (pc.v.required_center_hold_duration < 300)
         ):
             pc.v.required_center_hold_duration += 75
+
+        # Do any other required ITI logic in this function
+        do_other_ITI_logic()
     
     # If mouse is still licking the reward, let it keep going until it's done.
     elif (
@@ -187,5 +206,8 @@ def inter_trial_interval(event):
     ):
         pc.reset_timer("finish_ITI", pc.v.ITI_duration)
     
+    elif event == "close_final_valve":
+        final_valve.off()
+
     elif event == "finish_ITI":
         pc.goto_state("wait_for_center_poke")
