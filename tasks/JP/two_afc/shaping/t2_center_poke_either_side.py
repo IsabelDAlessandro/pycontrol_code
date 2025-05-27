@@ -1,19 +1,19 @@
 import pyControl.utility as pc
-from hardware_definitions.JP_2AFC_hardware import right_port, left_port, center_port, final_valve
+from hardware_definition import right_port, left_port, center_port, final_valve
 
 # Goal: teach mouse to poke in the center port first. Anything else while
 # the light is on is bad. Then can go to either side for a reward.
 
 
-
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
-events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "center_poke_held"]
+events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held"]
 initial_state = "wait_for_center_poke"
 
 # Odor parameters
-pc.v.required_center_hold_duration = 150  # ms
+pc.v.required_center_hold_duration = 225  # ms
 pc.v.odor_delivery_duration = 500
+pc.v.final_valve_flush_duration = 500
 
 # General Parameters.
 pc.v.session_duration = 1 * pc.hour  # Session duration.
@@ -77,8 +77,8 @@ def all_states(event):
     # When 'session_timer' event occurs stop framework to end session.
     if event == "session_timer":
         pc.stop_framework()
-    if pc.v.n_rewards >= pc.v.n_allowed_rwds:
-        pc.stop_framework()
+    elif event == "close_final_valve":
+        final_valve.off()
 
 
 ### State-machine ###
@@ -125,7 +125,7 @@ def deliver_odor(event):
         final_valve.on()
         pc.timed_goto_state("wait_for_side_poke", pc.v.odor_delivery_duration)
     elif event == "exit":
-        final_valve.off()
+        pc.set_timer("close_final_valve", (pc.v.final_valve_flush_duration))
         disable_odor_valves()
 
 
@@ -175,8 +175,6 @@ def inter_trial_interval(event):
         # the reward, without having to restart the entire ITI state, 
         # which would require lots of flags to only update things once, 
         # and would be generally confusing.
-        final_valve.on()
-        pc.set_timer("close_final_valve", (pc.v.ITI_duration - 0.5))
         pc.set_timer("finish_ITI", pc.v.ITI_duration)
         pc.v.entry_time = pc.get_current_time()
 
@@ -205,9 +203,10 @@ def inter_trial_interval(event):
         and ((pc.get_current_time() - pc.v.entry_time) < (pc.v.ITI_duration/2))
     ):
         pc.reset_timer("finish_ITI", pc.v.ITI_duration)
-    
-    elif event == "close_final_valve":
-        final_valve.off()
 
     elif event == "finish_ITI":
         pc.goto_state("wait_for_center_poke")
+    
+    elif event == "exit":
+        if pc.v.n_rewards >= pc.v.n_allowed_rwds:
+            pc.stop_framework()
