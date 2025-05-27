@@ -1,16 +1,10 @@
 import pyControl.utility as pc
-from devices import Breakout_1_2, Poke, Digital_output
+from hardware_definitions.JP_2AFC_hardware import right_port, left_port, center_port, final_valve
 
 # Goal: teach mouse to poke in the center port first. Anything else while
 # the light is on is bad. Then can go to either side for a reward.
 
 
-# Define hardware
-board = Breakout_1_2()
-right_port = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
-left_port = Poke(board.port_3, rising_event="left_poke", falling_event="left_poke_out")
-center_port = Poke(board.port_4, rising_event="center_poke", falling_event="center_poke_out")
-final_valve = Digital_output(pin=board.port_1.POW_C)
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]

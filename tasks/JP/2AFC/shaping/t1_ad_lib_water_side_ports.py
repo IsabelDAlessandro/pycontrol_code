@@ -1,10 +1,5 @@
 import pyControl.utility as pc
-from devices import Breakout_1_2, Poke
-
-# Define hardware
-board = Breakout_1_2()
-right_port = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
-left_port = Poke(board.port_3, rising_event="left_poke", falling_event="left_poke_out")
+from hardware_definitions.JP_2AFC_hardware import right_port, left_port
 
 # State machine
 states = ["wait_for_poke", "left_reward", "right_reward", "inter_trial_interval"]
