@@ -2,13 +2,25 @@ import pyControl.utility as pc
 from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B
 
 
+# Rwd sizing
+# For rwd durn multplier of 1, 1 mL ~ 125 rewards.
+# For rwd durn multiplier of 0.75, ~ 225 rewards.
+pc.v.reward_duration_multiplier = 0.75
+pc.v.n_allowed_rwds = 225  # total per session
+
+
 ############
 # New code for task 3
 ############
 
 # Additional vars for blocks
-pc.v.n_allowed_rwds_per_block = 10
+pc.v.n_allowed_rwds_per_block = 3
 pc.v.n_rewards_in_block = 0  # per-block counter
+pc.v.rewarded_side = "left" if pc.random() > 0.5 else "right"
+
+def get_n_rwds_allowed_in_block():
+    pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else 3
+
 
 # Re-define these functions here to produce odor behavior
 def set_odor_valves():
@@ -32,6 +44,7 @@ def do_other_ITI_logic():
 def check_update_rewarded_side():
     if pc.v.n_rewards_in_block >= pc.v.n_allowed_rwds_per_block:
         pc.v.rewarded_side = "left" if (pc.v.rewarded_side == "right") else "right"
+        get_n_rwds_allowed_in_block()
         pc.v.n_rewards_in_block = 0
     return
 
@@ -40,6 +53,7 @@ def is_rewarded(side):
     if side == pc.v.rewarded_side:
         pc.v.n_correct_trials += 1
         pc.v.n_rewards_in_block += 1
+        pc.v.n_rewards += 1
         pc.v.outcome = 1
     else:
         pc.v.outcome = 0
@@ -47,7 +61,7 @@ def is_rewarded(side):
     return pc.v.outcome
 
 ############
-# All code below here is direct c/p from task 2
+# All code below here is direct c/p from task 2, save for a few small changes (ie printing more vars)
 ############
 
 # State machine
@@ -56,17 +70,16 @@ events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_po
 initial_state = "wait_for_center_poke"
 
 # Odor parameters
-pc.v.required_center_hold_duration = 225  # ms
+pc.v.required_center_hold_duration = 300  # ms
 pc.v.odor_delivery_duration = 500
 pc.v.final_valve_flush_duration = 500
 
 # General Parameters.
 pc.v.session_duration = 1 * pc.hour  # Session duration.
 pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
-pc.v.reward_duration_multiplier = 1.0
+
 pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration.
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
-pc.v.n_allowed_rwds = 125  # total per session
 
 # Variables.
 pc.v.entry_time = 0
@@ -96,26 +109,6 @@ def run_end():
     # Do whatever else...save data maybe?
     pass
 
-
-### Helper funcs ###
-def is_rewarded(side):
-    ### Always rewarded in this task
-    pc.v.choice = side
-    pc.v.outcome = 1
-    pc.v.n_correct_trials += 1
-    pc.v.n_rewards += 1  # one reward per trial in this task
-    pc.v.ave_correct_tracker.add(1)
-    return pc.v.outcome
-
-
-def set_odor_valves():
-    pass
-
-def disable_odor_valves():
-    pass
-
-def do_other_ITI_logic():
-    pass
 
 # State-independent behaviour.
 def all_states(event):
@@ -226,7 +219,7 @@ def inter_trial_interval(event):
         # Update vars
         pc.v.mov_ave_correct = pc.v.ave_correct_tracker.ave
         pc.v.n_total_trials += 1
-        pc.print_variables(["n_total_trials", "n_correct_trials", "mov_ave_correct", "required_center_hold_duration"])
+        pc.print_variables(["n_total_trials", "n_correct_trials", "mov_ave_correct", "required_center_hold_duration", "rewarded_side"])
         
         # Auto-increase center hold duration for shaping
         if (
