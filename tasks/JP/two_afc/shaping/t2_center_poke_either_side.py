@@ -84,8 +84,6 @@ def all_states(event):
 ### State-machine ###
 
 def wait_for_center_poke(event):
-    # NB: this state can occur multiple times in a row.
-    # Use the inter_trial_interval state for once-per-trial updates.
 
     # Cue mouse that trial is available
     if event == "entry":
