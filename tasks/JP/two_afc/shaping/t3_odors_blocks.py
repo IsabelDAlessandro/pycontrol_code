@@ -19,7 +19,7 @@ pc.v.n_rewards_in_block = 0  # per-block counter
 pc.v.rewarded_side = "left" if pc.random() > 0.5 else "right"
 
 def get_n_rwds_allowed_in_block():
-    pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else 3
+    pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)
 
 
 # Re-define these functions here to produce odor behavior
@@ -122,9 +122,7 @@ def all_states(event):
 ### State-machine ###
 
 def wait_for_center_poke(event):
-    # NB: this state can occur multiple times in a row.
-    # Use the inter_trial_interval state for once-per-trial updates.
-
+  
     # Cue mouse that trial is available
     if event == "entry":
         center_port.LED.on()
