@@ -1,6 +1,10 @@
 import pyControl.utility as pc
 from devices import Breakout_1_2, Poke
 
+# The goal of this step is to teach mice that reward can come from either side port.
+# TBD if we actually need it -- some mice may just be super biased towards one port or the other,
+# and this could help reduce that before trying to add in the center port as well.
+
 # Define hardware
 board = Breakout_1_2()
 right_port = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
@@ -18,8 +22,9 @@ initial_state = "wait_for_poke"
 pc.v.session_duration = 0.5 * pc.hour  # Session duration.
 pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.ITI_duration = 2 * pc.second  # Inter trial interval duration.
-pc.v.n_allowed_rwds_per_block_mean = 4
-pc.v.n_allowed_rwds_per_block_max = 10
+pc.v.n_allowed_rwds_per_block_mean = 20  # start this very high, like 20. Point is just to teach mice that reward can come from either side port.
+pc.v.n_allowed_rwds_per_block_max = 25
+pc.v.n_allowed_rwds_per_block_min = 15
 pc.v.n_allowed_rwds = 100
 
 # Variables.
@@ -29,10 +34,10 @@ pc.v.n_rewards_in_block = 0
 
 def get_new_rwds_in_block():
     v = min(
-        int(round(pc.exp_rand(pc.v.n_allowed_rwds_per_block_mean), 0)),
+        int(round(pc.gauss_rand(pc.v.n_allowed_rwds_per_block_mean, 2), 0)),
         pc.v.n_allowed_rwds_per_block_max
     )
-    v = max(v, 1)
+    v = max(v, pc.v.n_allowed_rwds_per_block_min)
     return v
 pc.v.n_allowed_rwds_per_block = get_new_rwds_in_block()
 

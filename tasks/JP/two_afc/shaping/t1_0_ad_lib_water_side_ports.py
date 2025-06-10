@@ -1,5 +1,5 @@
 import pyControl.utility as pc
-from hardware_definitions.JP_2AFC_hardware import right_port, left_port
+from hardware_definition import right_port, left_port
 
 # State machine
 states = ["wait_for_poke", "left_reward", "right_reward", "inter_trial_interval"]
