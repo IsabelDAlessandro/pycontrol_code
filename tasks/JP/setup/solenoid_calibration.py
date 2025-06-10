@@ -32,7 +32,7 @@ initial_state = "init_state"
 
 # Variables
 v.rwd_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
-v.n_rwds_for_calibration = 100
+v.n_rwds_for_calibration = 200
 v.current_rwd = 0  # Current reward number
 
 
@@ -95,7 +95,7 @@ def left_calibration(event):
 
 def left_wait(event):
     if event == "entry":
-        timed_goto_state("left_calibration", 100)  # pause between each rwd delivery to allow the solenoid to fully close
+        timed_goto_state("left_calibration", 200)  # pause between each rwd delivery to allow the solenoid to fully close
 
 
 def right_calibration(event):
@@ -114,4 +114,4 @@ def right_calibration(event):
 
 def right_wait(event):
     if event == "entry":
-        timed_goto_state("right_calibration", 100)  # pause between each rwd delivery to allow the solenoid to fully close
+        timed_goto_state("right_calibration", 200)  # pause between each rwd delivery to allow the solenoid to fully close
