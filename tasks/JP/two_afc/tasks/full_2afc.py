@@ -9,12 +9,6 @@ pc.v.reward_duration_multiplier = 0.75
 pc.v.n_allowed_rwds = 225  # total per session
 
 
-############
-# New code for task 3
-############
-pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"
-
-
 # Re-define these functions here to produce odor behavior
 def set_odor_valves():
     if pc.v.rewarded_side == "left":
@@ -75,6 +69,7 @@ pc.v.final_valve_flush_duration = 500  # ensure this is shorter than the ITI
 # General Parameters.
 pc.v.session_duration = 1 * pc.hour  # Session duration.
 pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
+pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"
 
 pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
@@ -109,13 +104,13 @@ def run_end():
     # Do whatever else...save data maybe?
     pass
 
- 
+
 # State-independent behaviour.
 def all_states(event):
     # When 'session_timer' event occurs stop framework to end session.
     if event == "session_timer":
         pc.stop_framework()
-    
+
     # End flushing of final valve
     elif event == "close_final_valve":
         final_valve.off()
