@@ -10,14 +10,13 @@ initial_state = "wait_for_poke"
 
 
 # Parameters.
-pc.v.session_duration = 1 * pc.hour  # Session duration.
+pc.v.session_duration = 0.5 * pc.hour  # Session duration.
 pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
-pc.v.ITI_duration = 2 * pc.second  # Inter trial interval duration.
-pc.v.reward_dur_multiplier = 0.75  # adjust per mouse; increase if not interested
+pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
+pc.v.reward_dur_multiplier = 1  # adjust per mouse; increase if not interested
 
 # Variables.
 pc.v.n_rewards = 0  # Number of rewards obtained.
-pc.v.n_allowed_rwds = 150  # total per session
 
 
 # These funcs are auto-run at beginning + end
@@ -69,11 +68,8 @@ def inter_trial_interval(event):
         pc.timed_goto_state("wait_for_poke", pc.v.ITI_duration)
 
 
-
 # State independent behaviour.
 def all_states(event):
     # When 'session_timer' event occurs stop framework to end session.
     if event == "session_timer":
-        pc.stop_framework()
-    if pc.v.n_rewards >= pc.v.n_allowed_rwds:
         pc.stop_framework()
