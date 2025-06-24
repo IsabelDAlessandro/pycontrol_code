@@ -26,6 +26,7 @@ def disable_odor_valves():
 
 def do_other_ITI_logic():
     check_update_rewarded_side()
+    pc.publish_event("set_odor_valves_for_trial")
 
 
 def check_update_rewarded_side():
@@ -38,7 +39,6 @@ def check_update_rewarded_side():
 
     # Switch every trial
     pc.v.rewarded_side = "left" if pc.withprob(0.5) else "right"
-    pc.publish_event("set_odor_valves_for_trial")
     return
 
 def is_rewarded(side):
