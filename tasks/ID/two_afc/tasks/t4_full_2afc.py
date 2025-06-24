@@ -26,6 +26,7 @@ def disable_odor_valves():
 
 def do_other_ITI_logic():
     check_update_rewarded_side()
+    pc.publish_event("set_odor_valves_for_trial")
 
 
 def check_update_rewarded_side():
@@ -35,10 +36,10 @@ def check_update_rewarded_side():
     #     pc.v.rewarded_side = "left" if (pc.v.rewarded_side == "right") else "right"
     #     get_n_rwds_allowed_in_block()
     #     pc.v.n_rewards_in_block = 0
+    #     pc.publish_event("set_odor_valves_for_trial")
 
     # Switch every trial
     pc.v.rewarded_side = "left" if pc.withprob(0.5) else "right"
-    pc.publish_event("set_odor_valves_for_trial")
     return
 
 def is_rewarded(side):
@@ -93,6 +94,7 @@ pc.v.ave_correct_tracker = pc.OnlineMovingAverage(10)
 def run_start():
     # Set session timer and turn on houslight.
     pc.set_timer("session_timer", pc.v.session_duration)
+    pc.publish_event("set_odor_valves_for_trial")
 
 def run_end():
     # Turn off all hardware outputs.

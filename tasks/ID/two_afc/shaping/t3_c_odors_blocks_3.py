@@ -15,8 +15,8 @@ pc.v.required_center_hold_duration = 300
 # Rewards-per-block function
 # CHANGE ME based on demands of shaping
 def get_n_rwds_allowed_in_block():
-    #pc.v.n_allowed_rwds_per_block = 10  # initial high value for shaping (Day 1)
-    #pc.v.n_allowed_rwds_per_block = 7  # Day 2
+    # pc.v.n_allowed_rwds_per_block = 10  # initial high value for shaping (Day 1)
+    # pc.v.n_allowed_rwds_per_block = 7  # Day 2
     pc.v.n_allowed_rwds_per_block = 3  # Day 3
     # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else 3  # Day 4
     #pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)  # Day 5
@@ -43,6 +43,7 @@ def disable_odor_valves():
 
 def do_other_ITI_logic():
     check_update_rewarded_side()
+    pc.publish_event("set_odor_valves_for_trial")
 
 
 def check_update_rewarded_side():
@@ -104,6 +105,7 @@ pc.v.ave_correct_tracker = pc.OnlineMovingAverage(10)
 def run_start():
     # Set session timer and turn on houslight.
     pc.set_timer("session_timer", pc.v.session_duration)
+    pc.publish_event("set_odor_valves_for_trial")
 
 def run_end():
     # Turn off all hardware outputs.
