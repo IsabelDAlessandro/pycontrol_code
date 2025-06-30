@@ -52,6 +52,9 @@ def is_rewarded(side):
     pc.v.ave_correct_tracker.add(pc.v.outcome)
     return pc.v.outcome
 
+def clip(value, min_value, max_value):
+    return min(max(value, min_value), max_value)
+
 ############
 # All code below here is direct c/p from task 2, save for a few small changes (ie printing more vars)
 ############
@@ -72,6 +75,10 @@ pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"
 
 pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
+pc.v.ITI_duration_mu = 1.5 * pc.second
+pc.v.ITI_duration_sig = 0.75 * pc.second
+pc.v.ITI_duration_min = 1 * pc.second 
+pc.v.ITI_duration_max = 10 * pc.second 
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
 
 # Variables.
@@ -212,7 +219,17 @@ def timeout(event):
 
 def inter_trial_interval(event):
     if event == "entry":
-         
+
+        # Determine ITI for this trial 
+        pc.v.ITI_duration = clip(
+            pc.gauss_rand(
+                pc.v.ITI_duration_mu,
+                pc.v.ITI_duration_sig
+            ),
+            pc.v.ITI_duration_min,
+            pc.v.ITI_duration_max
+        )
+
         # Start ITI timer. Using a timer instead of "timed_goto_state()"
         # allows us to reset the timer if mouse isn't finished licking 
         # the reward, without having to restart the entire ITI state, 
@@ -231,15 +248,15 @@ def inter_trial_interval(event):
         do_other_ITI_logic()
     
     # If mouse is still licking the reward, let it keep going until it's done.
-    elif (
-        pc.v.outcome
-        and (
-                ((event == "left_poke") and pc.v.choice == "left")
-                or ((event == "right_poke") and pc.v.choice == "right")
-            )
-        and ((pc.get_current_time() - pc.v.entry_time) < (pc.v.ITI_duration/2))
-    ):
-        pc.reset_timer("finish_ITI", pc.v.ITI_duration)
+    # elif (
+    #     pc.v.outcome
+    #     and (
+    #             ((event == "left_poke") and pc.v.choice == "left")
+    #             or ((event == "right_poke") and pc.v.choice == "right")
+    #         )
+    #     and ((pc.get_current_time() - pc.v.entry_time) < (pc.v.ITI_duration/2))
+    # ):
+    #     pc.reset_timer("finish_ITI", pc.v.ITI_duration)
 
     # Once ITI finishes, go to first state again.
     elif event == "finish_ITI":
