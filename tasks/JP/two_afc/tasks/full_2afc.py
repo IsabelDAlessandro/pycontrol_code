@@ -1,5 +1,5 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B
+from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync
 
 
 # Rwd sizing
@@ -231,10 +231,9 @@ def inter_trial_interval(event):
         )
 
         # Start ITI timer. Using a timer instead of "timed_goto_state()"
-        # allows us to reset the timer if mouse isn't finished licking 
-        # the reward, without having to restart the entire ITI state, 
-        # which would require lots of flags to only update things once, 
-        # and would be generally confusing.
+        # allows us to reset the timer if necessary, instead of restarting
+        # the entire ITI state, which would require lots of flags to only 
+        # update things once, and would be generally confusing.
         pc.set_timer("finish_ITI", pc.v.ITI_duration)
         pc.v.entry_time = pc.get_current_time()
 
@@ -245,6 +244,7 @@ def inter_trial_interval(event):
         pc.print_variables(["n_total_trials", "n_correct_trials", "n_early_errors", "mov_ave_correct", "overall_ave_correct", "rewarded_side", "choice", "outcome"])
 
         # Do any other required ITI logic in this function
+        # (ie choose rewarded side for next trial)
         do_other_ITI_logic()
     
     # If mouse is still licking the reward, let it keep going until it's done.
