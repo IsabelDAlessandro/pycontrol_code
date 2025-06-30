@@ -61,7 +61,7 @@ def clip(value, min_value, max_value):
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
-events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "close_final_valve_done", "center_poke_held", "set_odor_valves_for_trial"]
+events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "close_final_valve_done", "center_poke_held", "set_odor_valves_for_trial", "therm_sync_ON"]
 initial_state = "wait_for_center_poke"
 
 # Odor parameters
@@ -80,7 +80,7 @@ pc.v.ITI_duration_sig = 0.75 * pc.second
 pc.v.ITI_duration_min = 1 * pc.second 
 pc.v.ITI_duration_max = 10 * pc.second 
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
-pc.v.min_nose_out_duration = 0.5 * pc.second
+pc.v.min_nose_out_duration = 0.75 * pc.second
 
 # Variables.
 pc.v.entry_time = 0
