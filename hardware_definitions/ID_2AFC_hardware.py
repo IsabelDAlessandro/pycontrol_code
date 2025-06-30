@@ -1,4 +1,4 @@
-from devices import Breakout_1_2, Poke, Digital_output, Audio_board
+from devices import Breakout_1_2, Poke, Digital_output, Audio_board, Frame_logger
 
 board = Breakout_1_2()
 
@@ -12,3 +12,5 @@ speaker = Audio_board(board.port_3)
 final_valve = Digital_output(pin=board.port_1.POW_C)
 odor_A = Digital_output(pin=board.port_1.POW_A)
 odor_B = Digital_output(pin=board.port_1.POW_B)
+
+thermistor_sync = Frame_logger(pin=board.BNC_2, rising_event="therm_sync_ON")
