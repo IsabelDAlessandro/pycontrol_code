@@ -102,6 +102,7 @@ pc.v.ave_correct_tracker = pc.OnlineMovingAverage(10)
 def run_start():
     # Set session timer and turn on houslight.
     pc.set_timer("session_timer", pc.v.session_duration)
+    pc.publish_event("set_odor_valves_for_trial")
 
 def run_end():
     # Turn off all hardware outputs.
