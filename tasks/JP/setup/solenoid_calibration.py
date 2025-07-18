@@ -1,13 +1,13 @@
 # A script for calibrating solenoids, derived from hardware_test.py in the examples.
 
 from pyControl.utility import *
-from devices import *
+from hardware_definition import left_port, right_port, center_port
 
 # Instantiate Devices.
-board = Breakout_1_2()
-left_poke = Poke(board.port_3, rising_event="left_poke", falling_event="left_poke_out")
-center_poke = Poke(board.port_4, rising_event="center_poke", falling_event="center_poke_out")
-right_poke = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
+# board = Breakout_1_2()
+# left_poke = Poke(board.port_3, rising_event="left_poke", falling_event="left_poke_out")
+# center_poke = Poke(board.port_4, rising_event="center_poke", falling_event="center_poke_out")
+# right_poke = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
 
 # States and events.
 
@@ -50,10 +50,10 @@ def run_end():
 def init_state(event):
     # Select left or right poke.
     if event == "entry":
-        center_poke.LED.on()
+        center_port.LED.on()
         v.current_rwd = 0
     elif event == "exit":
-        center_poke.LED.off()
+        center_port.LED.off()
     elif event == "left_poke":
         goto_state("left_active")
     elif event == "right_poke":
@@ -63,9 +63,9 @@ def init_state(event):
 def left_active(event):
     # Poke center to trigger solenoid or right to go to state right_active.
     if event == "entry":
-        left_poke.LED.on()
+        left_port.LED.on()
     elif event == "exit":
-        left_poke.LED.off()
+        left_port.LED.off()
     elif event == "center_poke":
         goto_state("left_calibration")
 
@@ -73,9 +73,9 @@ def left_active(event):
 def right_active(event):
     # Poke center to trigger solenoid or left to go to state left_active.
     if event == "entry":
-        right_poke.LED.on()
+        right_port.LED.on()
     elif event == "exit":
-        right_poke.LED.off()
+        right_port.LED.off()
     elif event == "center_poke":
         goto_state("right_calibration")
 
@@ -87,11 +87,11 @@ def left_calibration(event):
             # Stop calibration after n rewards.
             timed_goto_state("init_state", 100)
         else:
-            left_poke.SOL.on()
+            left_port.SOL.on()
             v.current_rwd += 1
             timed_goto_state("left_wait", v.rwd_durations[0])
     elif event == "exit":
-        left_poke.SOL.off()
+        left_port.SOL.off()
 
 def left_wait(event):
     if event == "entry":
@@ -105,11 +105,11 @@ def right_calibration(event):
             # Stop calibration after n rewards.
             timed_goto_state("init_state", 100)
         else:
-            right_poke.SOL.on()
+            right_port.SOL.on()
             v.current_rwd += 1
             timed_goto_state("right_wait", v.rwd_durations[1])
     elif event == "exit":
-        right_poke.SOL.off()
+        right_port.SOL.off()
 
 
 def right_wait(event):
