@@ -16,7 +16,7 @@ pc.v.reward_duration_multiplier = 1.0
 pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration.
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
 pc.v.n_allowed_rwds = 125  # total per session
-pc.v.early_error_buffer_time = 300  # ms
+pc.v.early_error_buffer_time = 500  # ms
 
 # Odor parameters
 pc.v.reward_durations = [30, 30]  # Reward delivery duration (ms) [left, right].
@@ -197,16 +197,16 @@ def inter_trial_interval(event):
         # Do any other required ITI logic in this function
         do_other_ITI_logic()
     
-    # If mouse is still licking the reward, let it keep going until it's done.
-    elif (
-        pc.v.outcome
-        and (
-                ((event == "left_poke") and pc.v.choice == "left")
-                or ((event == "right_poke") and pc.v.choice == "right")
-            )
-        and ((pc.get_current_time() - pc.v.entry_time) < (pc.v.ITI_duration/2))
-    ):
-        pc.reset_timer("finish_ITI", pc.v.ITI_duration)
+    # # If mouse is still licking the reward, let it keep going until it's done.
+    # elif (
+    #     pc.v.outcome
+    #     and (
+    #             ((event == "left_poke") and pc.v.choice == "left")
+    #             or ((event == "right_poke") and pc.v.choice == "right")
+    #         )
+    #     and ((pc.get_current_time() - pc.v.entry_time) < (pc.v.ITI_duration/2))
+    # ):
+    #     pc.reset_timer("finish_ITI", pc.v.ITI_duration)
 
     elif event == "finish_ITI":
         pc.goto_state("wait_for_center_poke")
