@@ -1,5 +1,5 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve
+from hardware_definition import right_port, left_port, center_port, final_valve, thermistor_sync
 
 # Goal: teach mouse to poke in the center port first. Anything else while
 # the light is on is bad. Then can go to either side for a reward.
@@ -7,26 +7,32 @@ from hardware_definition import right_port, left_port, center_port, final_valve
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
-events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held"]
+events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held", "therm_sync_ON"]
 initial_state = "wait_for_center_poke"
 
-# Odor parameters
-pc.v.required_center_hold_duration = 225  # ms
-pc.v.odor_delivery_duration = 500
-pc.v.final_valve_flush_duration = 500
-
-# General Parameters.
-pc.v.session_duration = 1 * pc.hour  # Session duration.
-pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
+# Shaping params (change these as required per mouse)
+pc.v.required_center_hold_duration = 150  # ms
 pc.v.reward_duration_multiplier = 1.0
 pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration.
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
 pc.v.n_allowed_rwds = 125  # total per session
+pc.v.early_error_buffer_time = 300  # ms
+
+# Odor parameters
+pc.v.reward_durations = [30, 30]  # Reward delivery duration (ms) [left, right].
+pc.v.odor_delivery_duration = 500
+pc.v.final_valve_flush_duration = 500
+
+
+# General Parameters.
+pc.v.session_duration = 1 * pc.hour  # Session duration.
+
 
 # Variables.
 pc.v.entry_time = 0
 pc.v.n_total_trials = 0
 pc.v.mov_ave_correct = 0  # moving avg of last 10 trials
+
 
 # Reward variables (updated / used in "is_rewarded")
 pc.v.choice = "right"
@@ -94,7 +100,7 @@ def wait_for_center_poke(event):
     # If mouse pokes either side port *after* the early-error buffer
     # has elapsed, then timeout and restart the trial.
     elif (
-        ((pc.get_current_time() - pc.v.entry_time) > 300)
+        ((pc.get_current_time() - pc.v.entry_time) > pc.v.early_error_buffer_time)
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()

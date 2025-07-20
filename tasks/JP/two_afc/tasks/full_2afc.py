@@ -81,6 +81,7 @@ pc.v.ITI_duration_min = 1 * pc.second
 pc.v.ITI_duration_max = 10 * pc.second 
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
 pc.v.min_nose_out_duration = 0.75 * pc.second
+pc.v.early_error_buffer_time = 300  # ms
 
 # Variables.
 pc.v.entry_time = 0
@@ -149,7 +150,7 @@ def wait_for_center_poke(event):
     # If mouse pokes either side port *after* the early-error buffer
     # has elapsed, then timeout and restart the trial.
     elif (
-        ((pc.get_current_time() - pc.v.entry_time) > 300)
+        ((pc.get_current_time() - pc.v.entry_time) > pc.v.early_error_buffer_time)
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()

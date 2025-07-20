@@ -3,29 +3,32 @@ from hardware_definition import right_port, left_port, center_port, final_valve,
 
 
 # Rwd sizing
-# For rwd durn multplier of 1, 1 mL ~ 125 rewards.
-# For rwd durn multiplier of 0.75, ~ 225 rewards.
 pc.v.reward_duration_multiplier = 1
 pc.v.n_allowed_rwds = 225  # total per session
 pc.v.reward_durations = [30, 30]  # Reward delivery duration (ms) [left, right].
 
 
-
 # Shaping vars
 pc.v.required_center_hold_duration = 300
+pc.v.n_allowed_rwds_per_block = 3  # starting value only; will be updated below
+
+pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
+pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
+
+pc.v.min_nose_out_duration = 0.75 * pc.second  # how long ms has to be NOT in center port to initiate a new trial
+pc.v.early_error_buffer_time = 300  # ms
 
 # Rewards-per-block function
 # CHANGE ME based on demands of shaping
 def get_n_rwds_allowed_in_block():
     # pc.v.n_allowed_rwds_per_block = 10  # initial high value for shaping (Day 1)
     # pc.v.n_allowed_rwds_per_block = 7  # Day 2
-    # pc.v.n_allowed_rwds_per_block = 3  # Day 3
+    pc.v.n_allowed_rwds_per_block = 3  # Day 3
     # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else 3  # Day 4
-    pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)  # Day 5
+    # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)  # Day 5
 
 
 # Additional vars for blocks
-pc.v.n_allowed_rwds_per_block = 3
 pc.v.n_rewards_in_block = 0  # per-block counter
 
 # Re-define these functions here to produce odor behavior
@@ -87,9 +90,6 @@ pc.v.final_valve_flush_duration = 500  # ensure this is shorter than the ITI
 pc.v.session_duration = 1 * pc.hour  # Session duration.
 pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"
 
-pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
-pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
-pc.v.min_nose_out_duration = 0.75 * pc.second
 
 # Variables.
 pc.v.entry_time = 0
@@ -158,7 +158,7 @@ def wait_for_center_poke(event):
     # If mouse pokes either side port *after* the early-error buffer
     # has elapsed, then timeout and restart the trial.
     elif (
-        ((pc.get_current_time() - pc.v.entry_time) > 300)
+        ((pc.get_current_time() - pc.v.entry_time) > pc.v.early_error_buffer_time)
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
@@ -269,7 +269,7 @@ def inter_trial_interval(event):
     #     pc.reset_timer("finish_ITI", pc.v.ITI_duration)
 
     # Once ITI finishes, and mouse's nose is out of center port,
-    # and has been out for at least 1 second,
+    # and has been out for at least min_nose_out_duration,
     # go to first state again.
     elif event == "finish_ITI":
         if  (
