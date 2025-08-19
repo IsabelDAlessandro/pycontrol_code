@@ -13,4 +13,5 @@ final_valve = Digital_output(pin=board.port_1.POW_C)
 odor_A = Digital_output(pin=board.port_1.POW_A)
 odor_B = Digital_output(pin=board.port_1.POW_B)
 
-thermistor_sync = Frame_logger(pin=board.BNC_2, rising_event="therm_sync_ON")
+thermistor_sync = Frame_logger(pin=board.BNC_1, rising_event="therm_sync_ON")
+camera_sync =  Frame_logger(pin=board.BNC_2, rising_event="cam_ON")
