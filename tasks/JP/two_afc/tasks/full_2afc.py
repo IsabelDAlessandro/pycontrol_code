@@ -5,8 +5,8 @@ from hardware_definition import right_port, left_port, center_port, final_valve,
 # Rwd sizing
 # For rwd durn multplier of 1, 1 mL ~ 125 rewards.
 # For rwd durn multiplier of 0.75, ~ 225 rewards.
-pc.v.reward_duration_multiplier = 1
-pc.v.n_allowed_rwds = 225  # total per session
+pc.v.reward_duration_multiplier = 0.8
+pc.v.n_allowed_rwds = 300  # total per session
 pc.v.reward_durations = [30, 30]  # Reward delivery duration (ms) [left, right].
 
 
@@ -74,12 +74,12 @@ pc.v.final_valve_flush_duration = 500  # ensure this is shorter than the ITI
 pc.v.session_duration = 1 * pc.hour  # Session duration.
 pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"
 
-pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
+pc.v.ITI_duration = 1.0 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
 pc.v.ITI_duration_mu = 1.5 * pc.second
 pc.v.ITI_duration_sig = 0.75 * pc.second
 pc.v.ITI_duration_min = 1 * pc.second 
-pc.v.ITI_duration_max = 10 * pc.second 
-pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
+pc.v.ITI_duration_max = 5 * pc.second 
+pc.v.timeout_duration = 2.0 * pc.second  # timeout for wrong trials (in addition to ITI)
 pc.v.min_nose_out_duration = 0.75 * pc.second
 pc.v.early_error_buffer_time = 300  # ms
 
