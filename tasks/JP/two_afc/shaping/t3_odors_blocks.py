@@ -1,31 +1,33 @@
 import pyControl.utility as pc
 from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync
 
+import micropython
+micropython.alloc_emergency_exception_buf(1000)
 
 # Rwd sizing
-pc.v.reward_duration_multiplier = 1
-pc.v.n_allowed_rwds = 225  # total per session
+pc.v.reward_duration_multiplier = 0.8
+pc.v.n_allowed_rwds = 250  # total per session
 pc.v.reward_durations = [30, 30]  # Reward delivery duration (ms) [left, right].
 
 
 # Shaping vars
-pc.v.required_center_hold_duration = 300
-pc.v.n_allowed_rwds_per_block = 3  # starting value only; will be updated below
+pc.v.required_center_hold_duration = 225  # target: 300
+pc.v.n_allowed_rwds_per_block = 0  # just initializing; will be updated before run start
 
-pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
-pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
+pc.v.ITI_duration = 1 * pc.second  # 1.5 Inter trial interval duration. Ensure this is longer than final valve flush duration.
+pc.v.timeout_duration = 1.5 * pc.second  # 2 timeout for wrong trials (in addition to ITI)
 
-pc.v.min_nose_out_duration = 0.75 * pc.second  # how long ms has to be NOT in center port to initiate a new trial
-pc.v.early_error_buffer_time = 300  # ms
+pc.v.min_nose_out_duration = 0.5 * pc.second  # 0.75 how long ms has to be NOT in center port to initiate a new trial
+pc.v.early_error_buffer_time = 300  # 300 ms
 
 # Rewards-per-block function
 # CHANGE ME based on demands of shaping
 def get_n_rwds_allowed_in_block():
     # pc.v.n_allowed_rwds_per_block = 10  # initial high value for shaping (Day 1)
     # pc.v.n_allowed_rwds_per_block = 7  # Day 2
-    pc.v.n_allowed_rwds_per_block = 3  # Day 3
+    # pc.v.n_allowed_rwds_per_block = 5  # Day 3
     # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else 3  # Day 4
-    # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)  # Day 5
+    pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)  # Day 5
 
 
 # Additional vars for blocks
@@ -112,6 +114,7 @@ def run_start():
     # Set session timer and turn on houslight.
     pc.set_timer("session_timer", pc.v.session_duration)
     pc.publish_event("set_odor_valves_for_trial")
+    get_n_rwds_allowed_in_block()
 
 def run_end():
     # Turn off all hardware outputs.

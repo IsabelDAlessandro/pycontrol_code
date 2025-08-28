@@ -1,11 +1,10 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port
+from hardware_definition import right_port, left_port, thermistor_sync, camera_sync
 
 # State machine
 states = ["wait_for_poke", "left_reward", "right_reward", "inter_trial_interval"]
 
-events = ["poke", "right_poke", "left_poke", "right_poke_out", "left_poke_out", "session_timer"]
-
+events = ["poke", "right_poke", "left_poke", "right_poke_out", "left_poke_out", "session_timer", "therm_sync_ON","cam_ON"]
 initial_state = "wait_for_poke"
 
 
@@ -14,6 +13,7 @@ pc.v.session_duration = 0.5 * pc.hour  # Session duration.
 pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
 pc.v.reward_dur_multiplier = 0.75  # adjust per mouse; increase if not interested
+pc.v.max_rewards = 150
 
 # Variables.
 pc.v.n_rewards = 0  # Number of rewards obtained.
@@ -28,7 +28,7 @@ def run_end():
     # Turn off all hardware outputs.
     right_port.SOL.off()
     left_port.SOL.off()
-
+    pc.print("SESSION_DONE")
     # Do whatever else...save data maybe?
     pass
 
@@ -65,7 +65,10 @@ def right_reward(event):
 def inter_trial_interval(event):
     # Go to init trial after specified delay.
     if event == "entry":
-        pc.timed_goto_state("wait_for_poke", pc.v.ITI_duration)
+        if pc.v.n_rewards >= pc.v.max_rewards:
+            pc.stop_framework()
+        else:
+            pc.timed_goto_state("wait_for_poke", pc.v.ITI_duration)
 
 
 # State independent behaviour.

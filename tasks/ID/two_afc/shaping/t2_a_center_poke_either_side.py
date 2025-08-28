@@ -1,5 +1,5 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve
+from hardware_definition import right_port, left_port, center_port, final_valve, thermistor_sync, camera_sync
 
 # Goal: teach mouse to poke in the center port first. Anything else while
 # the light is on is bad. Then can go to either side for a reward.
@@ -8,7 +8,7 @@ from hardware_definition import right_port, left_port, center_port, final_valve
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
-events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held"]
+events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held","therm_sync_ON","cam_ON"]
 initial_state = "wait_for_center_poke"
 
 # Odor parameters
@@ -22,7 +22,7 @@ pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.reward_duration_multiplier = 0.75
 pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
 pc.v.timeout_duration = 1 * pc.second  # timeout for wrong trials (in addition to ITI)
-pc.v.n_allowed_rwds = 160  # total per session
+pc.v.n_allowed_rwds = 240  # total per session
 
 # Variables.
 pc.v.entry_time = 0
@@ -48,7 +48,7 @@ def run_end():
     left_port.SOL.off()
     center_port.LED.off()
     disable_odor_valves()
-
+    pc.print("SESSION_DONE")
     # Do whatever else...save data maybe?
     pass
 

@@ -1,12 +1,12 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B
+from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync
 
 
 # Rwd sizing
 # For rwd durn multplier of 1, 1 mL ~ 125 rewards.
 # For rwd durn multiplier of 0.75, ~ 225 rewards.
 pc.v.reward_duration_multiplier = 0.75
-pc.v.n_allowed_rwds = 200  # total per session
+pc.v.n_allowed_rwds = 150  # total per session
 
 
 # Shaping vars
@@ -71,7 +71,7 @@ def is_rewarded(side):
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
-events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "close_final_valve_done", "center_poke_held", "set_odor_valves_for_trial"]
+events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "close_final_valve_done", "center_poke_held", "set_odor_valves_for_trial","therm_sync_ON"]
 initial_state = "wait_for_center_poke"
 
 # Odor parameters
@@ -83,7 +83,7 @@ pc.v.session_duration = 1 * pc.hour  # Session duration.
 pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"
 
-pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
+pc.v.ITI_duration = 3 * pc.second  # Inter trial interval duration. Ensure this is longer than final valve flush duration.
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
 
 # Variables.
@@ -113,7 +113,7 @@ def run_end():
     left_port.SOL.off()
     center_port.LED.off()
     disable_odor_valves()
-
+    pc.print("SESSION_DONE")
     # Do whatever else...save data maybe?
     pass
 

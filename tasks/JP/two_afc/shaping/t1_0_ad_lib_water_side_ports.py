@@ -1,10 +1,10 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port
+from hardware_definition import right_port, left_port, center_port
 
 # State machine
 states = ["wait_for_poke", "left_reward", "right_reward", "inter_trial_interval"]
 
-events = ["poke", "right_poke", "left_poke", "right_poke_out", "left_poke_out", "session_timer"]
+events = ["poke", "right_poke", "left_poke", "right_poke_out", "left_poke_out", "session_timer", "center_poke", "center_poke_out"]
 
 initial_state = "wait_for_poke"
 

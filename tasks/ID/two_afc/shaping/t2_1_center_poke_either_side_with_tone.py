@@ -57,7 +57,7 @@ def run_end():
     disable_odor_valves()
     # Turn off speaker and reset its volume
     speaker.off()
-
+    pc.print("SESSION_DONE")
     # Do whatever else...save data maybe?
     pass
 

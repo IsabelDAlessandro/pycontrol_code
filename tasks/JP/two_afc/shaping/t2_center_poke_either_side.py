@@ -15,7 +15,7 @@ pc.v.required_center_hold_duration = 150  # ms
 pc.v.reward_duration_multiplier = 1.0
 pc.v.ITI_duration = 1.5 * pc.second  # Inter trial interval duration.
 pc.v.timeout_duration = 2 * pc.second  # timeout for wrong trials (in addition to ITI)
-pc.v.n_allowed_rwds = 125  # total per session
+pc.v.n_allowed_rwds = 200  # total per session
 pc.v.early_error_buffer_time = 500  # ms
 
 # Odor parameters
