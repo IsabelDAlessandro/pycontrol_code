@@ -9,7 +9,7 @@ BASE_DIR = r"C:\Users\datta\Documents\2AFC\data\Isabel"  # watcher searches all 
 # ===================================================================
 
 SENTINEL = "SESSION_DONE"
-WEBHOOK = "https://hooks.slack.com/services/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" # or paste your URL string here
+WEBHOOK = "https://hooks.slack.com/services/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"
 
 def newest_file():
     # Search **recursively** for .tsv files
