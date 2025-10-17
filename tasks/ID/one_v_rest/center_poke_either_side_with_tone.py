@@ -10,7 +10,7 @@ TONE_FREQ_1 = 7000  # Hz
 #TONE_FREQ_1 = 4500  # Hz
 
 # Odor / final valve timing (ms)
-pc.v.required_center_hold_duration = 200
+pc.v.required_center_hold_duration = 150 #target: 300
 pc.v.odor_delivery_duration = 500
 pc.v.final_valve_flush_duration = 500
 
@@ -20,7 +20,9 @@ pc.v.reward_durations = [47, 54]  # [left, right] ms
 pc.v.reward_duration_multiplier = 0.75
 pc.v.ITI_duration = 3 * pc.second
 pc.v.timeout_duration = 2 * pc.second
-pc.v.n_allowed_rwds = 1250
+pc.v.timeout_early_ms = 500# penalty for EARLY side pokes (during wait_for_center_poke)
+pc.v.early_error_buffer_duration = 500#ms
+pc.v.n_allowed_rwds = 200
 
 # Stats / trackers
 pc.v.entry_time = 0
@@ -35,7 +37,7 @@ pc.v.ave_correct_tracker = pc.OnlineMovingAverage(10)
 # ---- Teensy olfactometer serial (optional) ----
 # If you want this task to explicitly select the blank line on the Teensy,
 # set the blank manifold valve number here (e.g., 8). If None, no serial is sent.
-BLANK_ODOR_VALVE_NUM = 8  # <-- set to an int (e.g., 8) if you want explicit blank selection.
+BLANK_ODOR_VALVE_NUM = None #- set to an int (e.g., 8) if you want explicit blank selection.
 
 BRIDGE_TAG = "#OLF:"  # tag your TSV bridge watches for
 
@@ -150,12 +152,13 @@ def wait_for_center_poke(event):
 
     # Side poke after early-error buffer -> timeout.
     elif (
-        ((pc.get_current_time() - pc.v.entry_time) > 300)
+        ((pc.get_current_time() - pc.v.entry_time) > pc.v.early_error_buffer_duration)
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
         speaker.off()
         disable_odor_valves()
+        pc.v.timeout_duration = pc.v.timeout_early_ms
         pc.goto_state("timeout")
 
     # If still licking at reward port, restart early-error buffer when they leave.

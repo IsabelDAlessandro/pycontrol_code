@@ -10,12 +10,14 @@ TONE_FREQ_1 = 4500  # Hz
 
 # Non-target odors (B options) — EDIT THIS LIST to your Teensy manifold mapping.
 # One of these channel numbers will be chosen at random each trial when B is required.
-pc.v.non_target_odors = [2,34]
+pc.v.non_target_odors = [2,3,4]
+pc.v.current_odor = None  
 pc.v.B_current_valve = None  # chosen per trial when B is used
 
 # Reward sizing
 pc.v.reward_duration_multiplier = 0.75
-pc.v.n_allowed_rwds = 150  # total per session
+pc.v.n_allowed_rwds = 220  # total per session
+pc.v.choice_window_ms = 5000
 
 # Shaping vars
 pc.v.required_center_hold_duration = 200
@@ -29,7 +31,7 @@ def get_n_rwds_allowed_in_block():
     # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)
 
 # Block counters
-pc.v.n_allowed_rwds_per_block = 7
+pc.v.n_allowed_rwds_per_block = 10
 pc.v.n_rewards_in_block = 0
 
 # =======================
@@ -37,7 +39,6 @@ pc.v.n_rewards_in_block = 0
 # =======================
 
 def _choose_B_for_this_trial_if_needed():
-    """Pick a non-target valve for B if we haven't already this trial."""
     if pc.v.B_current_valve is None:
         pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
         odor_B.set_valve(pc.v.B_current_valve)
@@ -47,16 +48,25 @@ def _choose_B_for_this_trial_if_needed():
 #   - If right is rewarded this trial -> present B (random) -> right is correct.
 def set_odor_valves():
     if pc.v.rewarded_side == "left":
-        odor_B.off()
-        odor_A.on()
-    elif pc.v.rewarded_side == "right":
+        if pc.v.current_odor != 'A':
+            if pc.v.current_odor == 'B':
+                odor_B.off()         # only turn off B if it was on
+            odor_A.on()              # turn on A
+            pc.v.current_odor = 'A'
+    else:  # right
         _choose_B_for_this_trial_if_needed()
-        odor_A.off()
-        odor_B.on()
+        if pc.v.current_odor != 'B':
+            if pc.v.current_odor == 'A':
+                odor_A.off()         # only turn off A if it was on
+            odor_B.on()              # turn on the chosen B
+            pc.v.current_odor = 'B'
 
 def disable_odor_valves():
-    odor_A.off()
-    odor_B.off()
+    if pc.v.current_odor == 'A':
+        odor_A.off()                 # only turn off what’s on
+    elif pc.v.current_odor == 'B':
+        odor_B.off()
+    pc.v.current_odor = None
 
 # ============ Reward-side / block helpers ============
 
@@ -95,7 +105,7 @@ def is_rewarded(side):
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
-events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "close_final_valve_done", "center_poke_held", "set_odor_valves_for_trial","therm_sync_ON"]
+events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "close_final_valve_done", "center_poke_held", "set_odor_valves_for_trial","therm_sync_ON","choice_window_over","svf_recheck" ]
 initial_state = "wait_for_center_poke"
 
 # Odor parameters
@@ -107,8 +117,13 @@ pc.v.session_duration = 1 * pc.hour
 pc.v.reward_durations = [47, 54]  # [left, right] ms
 pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"  # block starts left or right
 
+
 pc.v.ITI_duration = 3 * pc.second  # must exceed final valve flush duration
 pc.v.timeout_duration = 2 * pc.second
+pc.v.timeout_early_ms = 500# penalty for EARLY side pokes (during wait_for_center_poke)
+pc.v.timeout_wrong_ms = 2000   # penalty for WRONG choice after a valid center hold
+pc.v.early_error_buffer_duration = 300 #ms
+
 
 # Variables
 pc.v.entry_time = 0
@@ -150,8 +165,14 @@ def all_states(event):
         if pc.timer_remaining("close_final_valve_done") == 0:
             set_odor_valves()
         else:
-            pc.set_timer("set_odor_valves_for_trial", 100)
+            pc.set_timer("svf_recheck", 50)
 
+    elif event == "svf_recheck":
+        if pc.timer_remaining("close_final_valve_done") == 0:
+            set_odor_valves()
+        else:
+            # don't stack timers; just reset the existing one
+            pc.reset_timer("svf_recheck", 50)
 ### State-machine ###
 
 def wait_for_center_poke(event):
@@ -163,13 +184,14 @@ def wait_for_center_poke(event):
         pc.v.entry_time = pc.get_current_time()  # start early-error buffer
 
     elif (
-        ((pc.get_current_time() - pc.v.entry_time) > 300)
+        ((pc.get_current_time() - pc.v.entry_time) > pc.v.early_error_buffer_duration)
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
         speaker.off()  # tone OFF with LED
         disable_odor_valves()
         pc.v.n_early_errors += 1
+        pc.v.timeout_duration = pc.v.timeout_early_ms
         pc.goto_state("timeout")
 
     elif (event == "left_poke_out" or event == "right_poke_out"):
@@ -198,17 +220,35 @@ def deliver_odor(event):
         pc.set_timer("close_final_valve_done", pc.v.final_valve_flush_duration + 200)
 
 def wait_for_side_poke(event):
+    if event == "entry":
+        # Optional deadline for making the correct choice
+        if pc.v.choice_window_ms > 0:
+            pc.set_timer("choice_window_over", pc.v.choice_window_ms)
+
     if event == "right_poke":
         if is_rewarded("right"):
             pc.goto_state("right_reward")
         else:
+            pc.v.timeout_duration = pc.v.timeout_wrong_ms
             pc.goto_state("timeout")
-
     elif event == "left_poke":
         if is_rewarded("left"):
             pc.goto_state("left_reward")
         else:
+            pc.v.timeout_duration = pc.v.timeout_wrong_ms
             pc.goto_state("timeout")
+
+
+    elif event == "choice_window_over":
+        # No correct choice was made in time -> end trial without reward
+        pc.v.outcome = 0
+        pc.v.ave_correct_tracker.add(0)
+        pc.goto_state("inter_trial_interval")
+
+
+
+
+
 
 def left_reward(event):
     if event == "entry":
