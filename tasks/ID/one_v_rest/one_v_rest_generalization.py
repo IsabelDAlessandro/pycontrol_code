@@ -16,13 +16,17 @@ pc.v.bias_correction = True   # True to enable adaptive side probabilities
 # ===== CONFIG ==========
 # =======================
 
-
+# Tone: plays while center LED is ON
+TONE_FREQ_1 = 7000  # Hz (discriminatiopn tone)
+TONE_FREQ_2 = 4500  # Hz (generalization tone)
 
 # Non-target odors (B options) — EDIT to match Teensy manifold mapping.
 # One of these channels is chosen at random on RIGHT-rewarded trials during ITI.
-pc.v.non_target_odors = [2, 3,4,5]
+pc.v.target_odors = [1,6,7,9,10,11,12]   
+pc.v.non_target_odors = [2,3,4,5]  
 pc.v.current_odor = None       # 'A', 'B', or None (to de-duplicate serial prints)
-pc.v.B_current_valve = None    # chosen per trial when B is used
+pc.v.A_current_valve   = None   # chosen per LEFT-rewarded trial
+pc.v.B_current_valve   = None   # chosen per RIGHT-rewarded trial
 
 # Reward sizing
 pc.v.reward_duration_multiplier = 0.75
@@ -66,12 +70,21 @@ pc.v.odor_preset_done = False
 # ===== ODOR LOGIC ======
 # =======================
 
+def _choose_A_for_this_trial_if_needed():
+    if pc.v.A_current_valve is None:
+        pc.v.A_current_valve = pc.choice(pc.v.target_odors)
+        try:
+            odor_A.set_valve(pc.v.A_current_valve)
+        except AttributeError:
+            # If odor_A manifold cannot switch valves, keep this as a no-op or handle externally.
+            pass
+
 def _choose_B_for_this_trial_if_needed():
     if pc.v.B_current_valve is None:
         pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
         odor_B.set_valve(pc.v.B_current_valve)
 
-# A = left (fixed), B = right (random among non_target_odors)
+# A-set = left-rewarded (targets), B-set = right-rewarded (non-targets)
 def set_odor_valves():
     # Defensive: ensure a clean slate every time we preset the next odor.
     odor_A.off()
@@ -79,12 +92,12 @@ def set_odor_valves():
 
     if pc.v.rewarded_side == "left":
         # Left = A
+        _choose_A_for_this_trial_if_needed()
         if pc.v.current_odor != 'A':
             pc.v.current_odor = 'A'
         odor_A.on()
     else:
-        # Right = B (pick per-trial)
-        pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
+        _choose_B_for_this_trial_if_needed()
         odor_B.set_valve(pc.v.B_current_valve)
         if pc.v.current_odor != 'B':
             pc.v.current_odor = 'B'
@@ -138,9 +151,10 @@ def check_update_rewarded_side():
         pc.v.rewarded_side = "left" if pc.withprob(pc.v.p_left) else "right"
     else:
         pc.v.rewarded_side = "left" if pc.withprob(0.5) else "right"
-    # Reset B choice so the next right-rewarded trial picks a fresh non-target
+
+    # Reset per-trial valve choices so the next trial picks fresh valves
+    pc.v.A_current_valve = None
     pc.v.B_current_valve = None
-    return
 
 def is_rewarded(side):
     pc.v.choice = side
@@ -199,6 +213,7 @@ def run_end():
     left_port.SOL.off()
     center_port.LED.off()
     disable_odor_valves()
+    speaker.off()
     pc.print("SESSION_DONE")
 
 # =======================
@@ -240,6 +255,7 @@ def wait_for_center_poke(event):
 
     if event == "entry":
         center_port.LED.on()
+        speaker.sine(TONE_FREQ_2)
         pc.v.entry_time = pc.get_current_time()
 
     elif (
@@ -247,6 +263,7 @@ def wait_for_center_poke(event):
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
+        speaker.off()
         disable_odor_valves()
         pc.v.n_early_errors += 1
         pc.v.timeout_duration = pc.v.timeout_early_ms
@@ -265,6 +282,7 @@ def wait_for_center_poke(event):
 def deliver_odor(event):
     if event == "entry":
         center_port.LED.off()
+        speaker.off()
         final_valve.on()
         pc.timed_goto_state("wait_for_side_poke", pc.v.odor_delivery_duration)
 

@@ -101,7 +101,7 @@ initial_state = "wait_for_center_poke"
 
 # Odor parameters
 pc.v.odor_delivery_duration = 500
-pc.v.final_valve_flush_duration = 500  # ensure this is shorter than the ITI
+pc.v.final_valve_flush_duration = 1000  # ensure this is shorter than the ITI
 
 # General Parameters
 pc.v.session_duration = 1 * pc.hour

@@ -5,9 +5,7 @@ from hardware_definition import right_port, left_port, center_port, final_valve,
 # ===== PARAMETERS ======
 # =======================
 
-# Speaker Parameters for the tone linked to the center port LED
-TONE_FREQ_1 = 7000  # Hz
-#TONE_FREQ_1 = 4500  # Hz
+
 
 # Odor / final valve timing (ms)
 pc.v.required_center_hold_duration = 150 #target: 300
@@ -87,8 +85,6 @@ def run_end():
     left_port.SOL.off()
     center_port.LED.off()
     disable_odor_valves()
-    # Turn off speaker and reset its volume
-    speaker.off()
     pc.print("SESSION_DONE")
 
 
@@ -146,7 +142,6 @@ def wait_for_center_poke(event):
     # Cue mouse that trial is available
     if event == "entry":
         center_port.LED.on()
-        speaker.sine(TONE_FREQ_1)
         pc.v.entry_time = pc.get_current_time()
         set_odor_valves()
 
@@ -156,7 +151,6 @@ def wait_for_center_poke(event):
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
-        speaker.off()
         disable_odor_valves()
         pc.v.timeout_duration = pc.v.timeout_early_ms
         pc.goto_state("timeout")
@@ -178,7 +172,6 @@ def wait_for_center_poke(event):
 def deliver_odor(event):
     if event == "entry":
         center_port.LED.off()
-        speaker.off()
         # Open final valve (TTL to Teensy gate); Teensy should already be on blank
         final_valve.on()
         pc.timed_goto_state("wait_for_side_poke", pc.v.odor_delivery_duration)

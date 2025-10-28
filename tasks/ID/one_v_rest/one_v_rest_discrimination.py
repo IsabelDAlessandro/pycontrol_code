@@ -16,11 +16,13 @@ pc.v.bias_correction = True   # True to enable adaptive side probabilities
 # ===== CONFIG ==========
 # =======================
 
-
+# Tone: plays while center LED is ON
+TONE_FREQ_1 = 7000  # Hz (discriminatiopn tone)
+TONE_FREQ_2 = 4500  # Hz (generalization tone)
 
 # Non-target odors (B options) — EDIT to match Teensy manifold mapping.
 # One of these channels is chosen at random on RIGHT-rewarded trials during ITI.
-pc.v.non_target_odors = [2, 3,4,5]
+pc.v.non_target_odors = [2,3,4,5,6, 7,9,10,11,12]    
 pc.v.current_odor = None       # 'A', 'B', or None (to de-duplicate serial prints)
 pc.v.B_current_valve = None    # chosen per trial when B is used
 
@@ -199,6 +201,7 @@ def run_end():
     left_port.SOL.off()
     center_port.LED.off()
     disable_odor_valves()
+    speaker.off()
     pc.print("SESSION_DONE")
 
 # =======================
@@ -240,6 +243,7 @@ def wait_for_center_poke(event):
 
     if event == "entry":
         center_port.LED.on()
+        speaker.sine(TONE_FREQ_1)
         pc.v.entry_time = pc.get_current_time()
 
     elif (
@@ -247,6 +251,7 @@ def wait_for_center_poke(event):
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
+        speaker.off()
         disable_odor_valves()
         pc.v.n_early_errors += 1
         pc.v.timeout_duration = pc.v.timeout_early_ms
@@ -265,6 +270,7 @@ def wait_for_center_poke(event):
 def deliver_odor(event):
     if event == "entry":
         center_port.LED.off()
+        speaker.off()
         final_valve.on()
         pc.timed_goto_state("wait_for_side_poke", pc.v.odor_delivery_duration)
 
@@ -350,3 +356,4 @@ def inter_trial_interval(event):
     elif event == "exit":
         if pc.v.n_rewards >= pc.v.n_allowed_rwds:
             pc.stop_framework()
+''
