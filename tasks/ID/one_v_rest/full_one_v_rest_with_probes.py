@@ -33,7 +33,7 @@ pc.v.choice_window_ms = 5000
 # Shaping / timing
 pc.v.early_error_buffer_duration   = 300     # ms grace after entering wait_for_center_poke
 pc.v.odor_delivery_duration        = 500     # ms final valve ON before choice
-pc.v.final_valve_flush_duration    = 500     # ms TTL close delay to flush
+pc.v.final_valve_flush_duration    = 1000     # ms TTL close delay to flush
 
 # Session / ITI / timeouts
 pc.v.session_duration = 1 * pc.hour
