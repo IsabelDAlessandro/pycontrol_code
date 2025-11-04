@@ -3,14 +3,6 @@ import pyControl.utility as pc
 from time import sleep
 from hardware_definition import *
 
-# Define hardware
-# board = Breakout_1_2()
-# right_port = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
-# left_port = Poke(board.port_3, rising_event="left_poke", falling_event="left_poke_out")
-# center_port = Poke(board.port_4, rising_event="center_poke", falling_event="center_poke_out")
-# odor_A = Digital_output(pin=board.port_1.POW_A)
-# odor_B = Digital_output(pin=board.port_1.POW_B)
-# final_valve = Digital_output(pin=board.port_1.POW_C)
 
 # State machine
 states = ["wait_for_center_poke", "hold_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
@@ -20,14 +12,16 @@ events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_po
 initial_state = "inter_trial_interval"
 
 
-pc.v.required_center_hold_duration = 500  # ms
-pc.v.odor_delivery_duration = 500
+# pc.v.required_center_hold_duration = 500  # ms
+# pc.v.odor_delivery_duration = 500
+pc.v.required_center_hold_duration = 100  # ms
+pc.v.odor_delivery_duration = 50000
 pc.v.rewarded_side = "left"
 pc.v.reward_duration_multiplier = 1.25
 pc.v.choice = "left"
 pc.v.outcome = 0
 pc.v.ITI_duration = 1000
-pc.v.timeout_duration = 1000
+pc.v.timeout_duration = 0
 pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.n_rewards = 0
 

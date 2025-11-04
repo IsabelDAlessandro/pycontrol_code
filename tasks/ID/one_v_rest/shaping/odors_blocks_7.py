@@ -1,9 +1,14 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker
+from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker,rwd_durations
 
 # =======================
 # ===== CONFIG ==========
 # =======================
+
+#----------------------------VARIABLES TO EDIT------------------------------------
+pc.v.n_allowed_rwds = 220  # total per session (assuming a 5uL reward size)
+pc.v.required_center_hold_duration = 225
+#---------------------------------------------------------------------------------
 
 # Tone frequency (plays whenever center LED is ON)
 TONE_FREQ_1 = 4500  # Hz
@@ -11,20 +16,18 @@ TONE_FREQ_1 = 4500  # Hz
 # Non-target odors (B options) — EDIT THIS LIST to your Teensy manifold mapping.
 # One of these channel numbers will be chosen at random each trial when B is required.
 pc.v.non_target_odors = [2,3,4]
+pc.v.current_odor = None  
 pc.v.B_current_valve = None  # chosen per trial when B is used
 
 # Reward sizing
-pc.v.reward_duration_multiplier = 0.75
-pc.v.n_allowed_rwds = 150  # total per session
+pc.v.reward_duration_multiplier = 1
 pc.v.choice_window_ms = 5000
 
-# Shaping vars
-pc.v.required_center_hold_duration = 200
 
 # Rewards-per-block function (keep your shaping schedule here)
 def get_n_rwds_allowed_in_block():
-    pc.v.n_allowed_rwds_per_block = 10  # Day 1 example
-    #c.v.n_allowed_rwds_per_block = 7
+    #pc.v.n_allowed_rwds_per_block = 10  # Day 1 example
+    pc.v.n_allowed_rwds_per_block = 7
     # pc.v.n_allowed_rwds_per_block = 3
     # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else 3
     # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)
@@ -38,7 +41,6 @@ pc.v.n_rewards_in_block = 0
 # =======================
 
 def _choose_B_for_this_trial_if_needed():
-    """Pick a non-target valve for B if we haven't already this trial."""
     if pc.v.B_current_valve is None:
         pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
         odor_B.set_valve(pc.v.B_current_valve)
@@ -48,16 +50,25 @@ def _choose_B_for_this_trial_if_needed():
 #   - If right is rewarded this trial -> present B (random) -> right is correct.
 def set_odor_valves():
     if pc.v.rewarded_side == "left":
-        odor_B.off()
-        odor_A.on()
-    elif pc.v.rewarded_side == "right":
+        if pc.v.current_odor != 'A':
+            if pc.v.current_odor == 'B':
+                odor_B.off()         # only turn off B if it was on
+            odor_A.on()              # turn on A
+            pc.v.current_odor = 'A'
+    else:  # right
         _choose_B_for_this_trial_if_needed()
-        odor_A.off()
-        odor_B.on()
+        if pc.v.current_odor != 'B':
+            if pc.v.current_odor == 'A':
+                odor_A.off()         # only turn off A if it was on
+            odor_B.on()              # turn on the chosen B
+            pc.v.current_odor = 'B'
 
 def disable_odor_valves():
-    odor_A.off()
-    odor_B.off()
+    if pc.v.current_odor == 'A':
+        odor_A.off()                 # only turn off what’s on
+    elif pc.v.current_odor == 'B':
+        odor_B.off()
+    pc.v.current_odor = None
 
 # ============ Reward-side / block helpers ============
 
@@ -105,14 +116,17 @@ pc.v.final_valve_flush_duration = 1000  # ensure this is shorter than the ITI
 
 # General Parameters
 pc.v.session_duration = 1 * pc.hour
-pc.v.reward_durations = [47, 54]  # [left, right] ms
+#pc.v.reward_durations = [47, 54]  # [left, right] ms
+pc.v.reward_durations = rwd_durations
 pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"  # block starts left or right
+
 
 pc.v.ITI_duration = 3 * pc.second  # must exceed final valve flush duration
 pc.v.timeout_duration = 2 * pc.second
 pc.v.timeout_early_ms = 500# penalty for EARLY side pokes (during wait_for_center_poke)
 pc.v.timeout_wrong_ms = 2000   # penalty for WRONG choice after a valid center hold
 pc.v.early_error_buffer_duration = 300 #ms
+
 
 # Variables
 pc.v.entry_time = 0
@@ -214,23 +228,29 @@ def wait_for_side_poke(event):
         if pc.v.choice_window_ms > 0:
             pc.set_timer("choice_window_over", pc.v.choice_window_ms)
 
+    if event == "right_poke":
+        if is_rewarded("right"):
+            pc.goto_state("right_reward")
+        else:
+            pc.v.timeout_duration = pc.v.timeout_wrong_ms
+            pc.goto_state("timeout")
     elif event == "left_poke":
-        # Only reward if LEFT is the correct side; otherwise ignore and keep waiting
-        if pc.v.rewarded_side == "left":
-            if is_rewarded("left"):
-                pc.goto_state("left_reward")
+        if is_rewarded("left"):
+            pc.goto_state("left_reward")
+        else:
+            pc.v.timeout_duration = pc.v.timeout_wrong_ms
+            pc.goto_state("timeout")
 
-    elif event == "right_poke":
-        # Only reward if RIGHT is the correct side; otherwise ignore and keep waiting
-        if pc.v.rewarded_side == "right":
-            if is_rewarded("right"):
-                pc.goto_state("right_reward")
 
     elif event == "choice_window_over":
         # No correct choice was made in time -> end trial without reward
         pc.v.outcome = 0
         pc.v.ave_correct_tracker.add(0)
         pc.goto_state("inter_trial_interval")
+
+
+
+
 
 
 def left_reward(event):

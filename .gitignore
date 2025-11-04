@@ -5,3 +5,4 @@ ErrorLog.txt
 
 .DS_Store
 watcher_slack_min.py
+tools/watcher_slack_min.py

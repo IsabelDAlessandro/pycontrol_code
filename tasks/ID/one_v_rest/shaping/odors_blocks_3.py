@@ -1,9 +1,15 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker
+from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker,rwd_durations
 
 # =======================
 # ===== CONFIG ==========
 # =======================
+
+#----------------------------VARIABLES TO EDIT------------------------------------
+pc.v.n_allowed_rwds = 220  # total per session (assuming a 5uL reward size)
+pc.v.required_center_hold_duration = 225
+#---------------------------------------------------------------------------------
+
 
 # Tone frequency (plays whenever center LED is ON)
 TONE_FREQ_1 = 4500  # Hz
@@ -15,23 +21,20 @@ pc.v.current_odor = None
 pc.v.B_current_valve = None  # chosen per trial when B is used
 
 # Reward sizing
-pc.v.reward_duration_multiplier = 0.75
-pc.v.n_allowed_rwds = 200  # total per session
+pc.v.reward_duration_multiplier = 1
 pc.v.choice_window_ms = 5000
 
-# Shaping vars
-pc.v.required_center_hold_duration =200
 
 # Rewards-per-block function (keep your shaping schedule here)
 def get_n_rwds_allowed_in_block():
-    pc.v.n_allowed_rwds_per_block = 10  # Day 1 example
-    #c.v.n_allowed_rwds_per_block = 7
-    # pc.v.n_allowed_rwds_per_block = 3
+    #pc.v.n_allowed_rwds_per_block = 10  # Day 1 example
+    #pc.v.n_allowed_rwds_per_block = 7
+    pc.v.n_allowed_rwds_per_block = 3
     # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else 3
     # pc.v.n_allowed_rwds_per_block = 2 if pc.withprob(0.5) else (1 if pc.withprob(0.5) else 3)
 
 # Block counters
-pc.v.n_allowed_rwds_per_block = 10
+pc.v.n_allowed_rwds_per_block = 3
 pc.v.n_rewards_in_block = 0
 
 # =======================
@@ -114,7 +117,8 @@ pc.v.final_valve_flush_duration = 1000  # ensure this is shorter than the ITI
 
 # General Parameters
 pc.v.session_duration = 1 * pc.hour
-pc.v.reward_durations = [47, 54]  # [left, right] ms
+pc.v.reward_durations = rwd_durations
+#pc.v.reward_durations = [47, 54]  # [left, right] ms
 pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"  # block starts left or right
 
 

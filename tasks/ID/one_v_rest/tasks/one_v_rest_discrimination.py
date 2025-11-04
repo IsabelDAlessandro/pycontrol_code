@@ -1,6 +1,6 @@
 # full_one_v_rest.py
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker
+from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker,rwd_durations
 
 
 #----------------------------VARIABLES TO EDIT------------------------------------
@@ -22,14 +22,12 @@ TONE_FREQ_2 = 4500  # Hz (generalization tone)
 
 # Non-target odors (B options) — EDIT to match Teensy manifold mapping.
 # One of these channels is chosen at random on RIGHT-rewarded trials during ITI.
-pc.v.target_odors = [1,6,7,9,10,11,12]   
-pc.v.non_target_odors = [2,3,4,5]  
+pc.v.non_target_odors = [2,3,4,5,6, 7,9,10,11,12]    
 pc.v.current_odor = None       # 'A', 'B', or None (to de-duplicate serial prints)
-pc.v.A_current_valve   = None   # chosen per LEFT-rewarded trial
-pc.v.B_current_valve   = None   # chosen per RIGHT-rewarded trial
+pc.v.B_current_valve = None    # chosen per trial when B is used
 
 # Reward sizing
-pc.v.reward_duration_multiplier = 0.75
+pc.v.reward_duration_multiplier = 1
 pc.v.choice_window_ms = 5000
 
 # Shaping / timing
@@ -39,7 +37,8 @@ pc.v.final_valve_flush_duration    = 1000     # ms TTL close delay to flush
 
 # Session / ITI / timeouts
 pc.v.session_duration = 1 * pc.hour
-pc.v.reward_durations = [47, 54]  # [left, right] ms
+#pv.reward_durations = [47, 54]  # [left, right] ms
+pc.v.reward_durations = rwd_durations
 pc.v.ITI_duration     = 3 * pc.second
 pc.v.timeout_duration = 2 * pc.second        # generic default; will be overridden below as needed
 pc.v.timeout_early_ms = 500                  # penalty for EARLY side pokes (during wait_for_center_poke)
@@ -70,21 +69,12 @@ pc.v.odor_preset_done = False
 # ===== ODOR LOGIC ======
 # =======================
 
-def _choose_A_for_this_trial_if_needed():
-    if pc.v.A_current_valve is None:
-        pc.v.A_current_valve = pc.choice(pc.v.target_odors)
-        try:
-            odor_A.set_valve(pc.v.A_current_valve)
-        except AttributeError:
-            # If odor_A manifold cannot switch valves, keep this as a no-op or handle externally.
-            pass
-
 def _choose_B_for_this_trial_if_needed():
     if pc.v.B_current_valve is None:
         pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
         odor_B.set_valve(pc.v.B_current_valve)
 
-# A-set = left-rewarded (targets), B-set = right-rewarded (non-targets)
+# A = left (fixed), B = right (random among non_target_odors)
 def set_odor_valves():
     # Defensive: ensure a clean slate every time we preset the next odor.
     odor_A.off()
@@ -92,12 +82,12 @@ def set_odor_valves():
 
     if pc.v.rewarded_side == "left":
         # Left = A
-        _choose_A_for_this_trial_if_needed()
         if pc.v.current_odor != 'A':
             pc.v.current_odor = 'A'
         odor_A.on()
     else:
-        _choose_B_for_this_trial_if_needed()
+        # Right = B (pick per-trial)
+        pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
         odor_B.set_valve(pc.v.B_current_valve)
         if pc.v.current_odor != 'B':
             pc.v.current_odor = 'B'
@@ -151,10 +141,9 @@ def check_update_rewarded_side():
         pc.v.rewarded_side = "left" if pc.withprob(pc.v.p_left) else "right"
     else:
         pc.v.rewarded_side = "left" if pc.withprob(0.5) else "right"
-
-    # Reset per-trial valve choices so the next trial picks fresh valves
-    pc.v.A_current_valve = None
+    # Reset B choice so the next right-rewarded trial picks a fresh non-target
     pc.v.B_current_valve = None
+    return
 
 def is_rewarded(side):
     pc.v.choice = side
@@ -255,7 +244,7 @@ def wait_for_center_poke(event):
 
     if event == "entry":
         center_port.LED.on()
-        speaker.sine(TONE_FREQ_2)
+        speaker.sine(TONE_FREQ_1)
         pc.v.entry_time = pc.get_current_time()
 
     elif (
@@ -368,3 +357,4 @@ def inter_trial_interval(event):
     elif event == "exit":
         if pc.v.n_rewards >= pc.v.n_allowed_rwds:
             pc.stop_framework()
+''
