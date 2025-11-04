@@ -1,33 +1,31 @@
-# full_one_v_rest_with_probes.py
+# full_one_v_rest.py
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker
+from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker,rwd_durations
+
 
 #----------------------------VARIABLES TO EDIT------------------------------------
 pc.v.required_center_hold_duration = 300
 pc.v.n_allowed_rwds = 200
-# --- NEW: Probe controls ---
-pc.v.probe_probability = 0.15   # e.g., 0.10 = 10% of trials are probe trials
-# Put the manifold channel numbers here for your probe odors (assumes odor_B manifold).
-# If probes live on a different manifold, swap odor_B.* calls in _choose_probe_for_this_trial()
-pc.v.probe_valves = [6, 7,9,10,11,12]     
+pc.v.bias_correction = False   # True to enable adaptive side probabilities
 #---------------------------------------------------------------------------------
+
+
+
 
 # =======================
 # ===== CONFIG ==========
 # =======================
 
-# Tone: plays while center LED is ON
-TONE_FREQ_1 = 4500  # Hz
+
 
 # Non-target odors (B options) — EDIT to match Teensy manifold mapping.
 # One of these channels is chosen at random on RIGHT-rewarded trials during ITI.
-pc.v.non_target_odors = [2, 3, 4, 5]
-pc.v.current_odor = None       # 'A', 'B', 'P' (probe), or None (to de-duplicate serial prints)
+pc.v.non_target_odors = [2, 3,4,5]
+pc.v.current_odor = None       # 'A', 'B', or None (to de-duplicate serial prints)
 pc.v.B_current_valve = None    # chosen per trial when B is used
-pc.v.P_current_valve = None    # chosen per probe trial
 
 # Reward sizing
-pc.v.reward_duration_multiplier = 0.75
+pc.v.reward_duration_multiplier = 1
 pc.v.choice_window_ms = 5000
 
 # Shaping / timing
@@ -37,38 +35,33 @@ pc.v.final_valve_flush_duration    = 1000     # ms TTL close delay to flush
 
 # Session / ITI / timeouts
 pc.v.session_duration = 1 * pc.hour
-pc.v.reward_durations = [47, 54]  # [left, right] ms
+#pc.v.reward_durations = [47, 54]  # [left, right] ms
+pc.v.reward_durations = rwd_durations
 pc.v.ITI_duration     = 3 * pc.second
 pc.v.timeout_duration = 2 * pc.second        # generic default; will be overridden below as needed
 pc.v.timeout_early_ms = 500                  # penalty for EARLY side pokes (during wait_for_center_poke)
 pc.v.timeout_wrong_ms = 2000                 # penalty for WRONG choice after valid center hold
 
-# Bias correction (ON by default here)
-pc.v.bias_correction = False
-pc.v.p_left          = 0.5
-pc.v.max_side_prob   = 0.75
-pc.v.bias_step       = 0.01
-pc.v.bias_window     = 20
-pc.v.choice_hist     = []
+# Bias correction (OFF by default)
+pc.v.p_left          = 0.5      # current probability to schedule a LEFT-rewarded trial
+pc.v.max_side_prob   = 0.75     # cap either side to 0.75 (min becomes 0.25)
+pc.v.bias_step       = 0.01     # step size when adapting p_left
+pc.v.bias_window     = 20       # number of recent trials to estimate bias over
+pc.v.choice_hist     = []       # rolling list of 'L'/'R' choices (<= bias_window)
 
 # Stats / trackers
-pc.v.entry_time          = 0
-pc.v.n_total_trials      = 0            # includes probe trials
-pc.v.n_task_trials       = 0            # excludes early errors & probe trials (for accuracy)
-pc.v.n_probe_trials      = 0
-pc.v.n_early_errors      = 0
-pc.v.mov_ave_correct     = 0
+pc.v.entry_time        = 0
+pc.v.n_total_trials    = 0
+pc.v.n_early_errors    = 0
+pc.v.mov_ave_correct   = 0
 pc.v.overall_ave_correct = 0
-pc.v.choice              = "right"
-pc.v.rewarded_side       = "left" if (pc.random() > 0.5) else "right"
-pc.v.outcome             = 0
-pc.v.n_correct_trials    = 0
-pc.v.n_rewards           = 0
+pc.v.choice            = "right"
+pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"  #starts left or right
+pc.v.outcome           = 0
+pc.v.n_correct_trials  = 0
+pc.v.n_rewards         = 0
 pc.v.ave_correct_tracker = pc.OnlineMovingAverage(10)
-
-# Trial type
-pc.v.is_probe_trial      = False
-pc.v.trial_type          = "task"       # 'task' or 'probe'
+pc.v.odor_preset_done = False
 
 # =======================
 # ===== ODOR LOGIC ======
@@ -79,45 +72,29 @@ def _choose_B_for_this_trial_if_needed():
         pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
         odor_B.set_valve(pc.v.B_current_valve)
 
-def _choose_probe_for_this_trial():
-    # Choose which probe valve to use this trial and set the manifold
-    pc.v.P_current_valve = pc.choice(pc.v.probe_valves)
-    odor_B.set_valve(pc.v.P_current_valve)
-
-# A = left (fixed), B = right (random among non_target_odors), P = probe (from probe_valves)
+# A = left (fixed), B = right (random among non_target_odors)
 def set_odor_valves():
-    if pc.v.is_probe_trial:
-        _choose_probe_for_this_trial()
-        # Ensure only B manifold is ON for probe
-        if pc.v.current_odor != 'P':
-            if pc.v.current_odor == 'A':
-                odor_A.off()
-            elif pc.v.current_odor == 'B':
-                odor_B.off()
-            odor_B.on()
-            pc.v.current_odor = 'P'
-        return
+    # Defensive: ensure a clean slate every time we preset the next odor.
+    odor_A.off()
+    odor_B.off()
 
-    # Task (non-probe) trials:
     if pc.v.rewarded_side == "left":
+        # Left = A
         if pc.v.current_odor != 'A':
-            if pc.v.current_odor == 'B' or pc.v.current_odor == 'P':
-                odor_B.off()
-            odor_A.on()
             pc.v.current_odor = 'A'
-    else:  # right
-        _choose_B_for_this_trial_if_needed()
+        odor_A.on()
+    else:
+        # Right = B (pick per-trial)
+        pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
+        odor_B.set_valve(pc.v.B_current_valve)
         if pc.v.current_odor != 'B':
-            if pc.v.current_odor == 'A' or pc.v.current_odor == 'P':
-                odor_A.off()
-            odor_B.on()
             pc.v.current_odor = 'B'
+        odor_B.on()
+
 
 def disable_odor_valves():
-    if pc.v.current_odor == 'A':
-        odor_A.off()
-    elif pc.v.current_odor in ('B', 'P'):
-        odor_B.off()
+    odor_A.off()
+    odor_B.off()
     pc.v.current_odor = None
 
 # ===========================
@@ -125,9 +102,6 @@ def disable_odor_valves():
 # ===========================
 
 def _record_choice_for_bias():
-    # Do not adapt bias using probe trials
-    if pc.v.is_probe_trial:
-        return
     ch = 'L' if pc.v.choice == 'left' else ('R' if pc.v.choice == 'right' else None)
     if ch:
         pc.v.choice_hist.append(ch)
@@ -159,31 +133,18 @@ def _update_side_probability():
         elif pc.v.p_left < 0.5:
             pc.v.p_left = min(0.5, pc.v.p_left + 0.02)
 
-def _choose_trial_type_and_side():
-    # Decide if probe or task trial
-    pc.v.is_probe_trial = pc.withprob(pc.v.probe_probability)
-    pc.v.trial_type = "probe" if pc.v.is_probe_trial else "task"
-
-    if not pc.v.is_probe_trial:
-        # Decide rewarded side (with / without bias correction)
-        if pc.v.bias_correction:
-            _update_side_probability()
-            pc.v.rewarded_side = "left" if pc.withprob(pc.v.p_left) else "right"
-        else:
-            pc.v.rewarded_side = "left" if pc.withprob(0.5) else "right"
-
-    # Reset per-trial valve choices
+def check_update_rewarded_side():
+    if pc.v.bias_correction:
+        _update_side_probability()
+        pc.v.rewarded_side = "left" if pc.withprob(pc.v.p_left) else "right"
+    else:
+        pc.v.rewarded_side = "left" if pc.withprob(0.5) else "right"
+    # Reset B choice so the next right-rewarded trial picks a fresh non-target
     pc.v.B_current_valve = None
-    pc.v.P_current_valve = None
+    return
 
 def is_rewarded(side):
     pc.v.choice = side
-    if pc.v.is_probe_trial:
-        # No rewards on probe trials; leave outcome as 0 and do not update accuracy counters here
-        pc.v.outcome = 0
-        return 0
-
-    # Task trial logic
     if side == pc.v.rewarded_side:
         pc.v.n_correct_trials += 1
         pc.v.n_rewards += 1
@@ -195,7 +156,7 @@ def is_rewarded(side):
 
 def do_other_ITI_logic():
     _record_choice_for_bias()
-    _choose_trial_type_and_side()
+    check_update_rewarded_side()
     pc.publish_event("set_odor_valves_for_trial")
 
 # =======================
@@ -229,6 +190,8 @@ initial_state = "wait_for_center_poke"
 # =======================
 
 def run_start():
+    final_valve.off()
+    pc.v.odor_preset_done = False
     pc.set_timer("session_timer", pc.v.session_duration)
     pc.publish_event("set_odor_valves_for_trial")
 
@@ -237,7 +200,6 @@ def run_end():
     left_port.SOL.off()
     center_port.LED.off()
     disable_odor_valves()
-    speaker.off()
     pc.print("SESSION_DONE")
 
 # =======================
@@ -258,15 +220,17 @@ def all_states(event):
 
     # After new trial's odor is selected in ITI, set valves once final valve is definitely closed.
     elif event == "set_odor_valves_for_trial":
-        if pc.timer_remaining("close_final_valve_done") == 0:
+        if pc.timer_remaining("close_final_valve_done") == 0 and not pc.v.odor_preset_done:
             set_odor_valves()
-        else:
+            pc.v.odor_preset_done = True
+        elif not pc.v.odor_preset_done:
             pc.set_timer("svf_recheck", 50)
 
     elif event == "svf_recheck":
-        if pc.timer_remaining("close_final_valve_done") == 0:
+        if pc.timer_remaining("close_final_valve_done") == 0 and not pc.v.odor_preset_done:
             set_odor_valves()
-        else:
+            pc.v.odor_preset_done = True
+        elif not pc.v.odor_preset_done:
             pc.reset_timer("svf_recheck", 50)
 
 # =======================
@@ -277,7 +241,6 @@ def wait_for_center_poke(event):
 
     if event == "entry":
         center_port.LED.on()
-        speaker.sine(TONE_FREQ_1)
         pc.v.entry_time = pc.get_current_time()
 
     elif (
@@ -285,7 +248,6 @@ def wait_for_center_poke(event):
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
-        speaker.off()
         disable_odor_valves()
         pc.v.n_early_errors += 1
         pc.v.timeout_duration = pc.v.timeout_early_ms
@@ -304,7 +266,6 @@ def wait_for_center_poke(event):
 def deliver_odor(event):
     if event == "entry":
         center_port.LED.off()
-        speaker.off()
         final_valve.on()
         pc.timed_goto_state("wait_for_side_poke", pc.v.odor_delivery_duration)
 
@@ -318,18 +279,6 @@ def wait_for_side_poke(event):
         if pc.v.choice_window_ms > 0:
             pc.set_timer("choice_window_over", pc.v.choice_window_ms)
 
-    # --- Probe trials: any side poke ends the trial without reward or timeout ---
-    if pc.v.is_probe_trial:
-        if event == "left_poke" or event == "right_poke":
-            pc.v.choice = "left" if event == "left_poke" else "right"
-            # Do not update accuracy stats for probe trials
-            pc.goto_state("inter_trial_interval")
-        elif event == "choice_window_over":
-            # No side poke during window; just proceed to ITI (no accuracy update)
-            pc.goto_state("inter_trial_interval")
-        return
-
-    # --- Task trials (rewarded side) ---
     if event == "right_poke":
         if is_rewarded("right"):
             pc.goto_state("right_reward")
@@ -372,34 +321,22 @@ def inter_trial_interval(event):
         pc.set_timer("finish_ITI", pc.v.ITI_duration)
         pc.v.entry_time = pc.get_current_time()
 
-        # Tally trial counts
         pc.v.n_total_trials += 1
-        if pc.v.is_probe_trial:
-            pc.v.n_probe_trials += 1
-        else:
-            # Only task trials (non-probe, excluding early errors which were already handled)
-            pc.v.n_task_trials += 1
-
-        # Accuracy metrics (task trials only)
         pc.v.mov_ave_correct = pc.v.ave_correct_tracker.ave
-        denom = max(pc.v.n_task_trials, 1)
-        pc.v.overall_ave_correct = pc.v.n_correct_trials / denom
-
-        # Minimal telemetry
+        pc.v.overall_ave_correct = pc.v.n_correct_trials / max(pc.v.n_total_trials - pc.v.n_early_errors, 1)
         pc.print_variables([
-            "n_total_trials", "n_task_trials", "n_probe_trials", "n_correct_trials", "n_early_errors",
+            "n_total_trials", "n_correct_trials", "n_early_errors",
             "mov_ave_correct", "overall_ave_correct",
-            "trial_type", "rewarded_side", "choice", "outcome", "p_left",
-            "B_current_valve", "P_current_valve"
+            "rewarded_side", "choice", "outcome", "p_left"
         ])
 
-        # Decide next trial and pre-set odor once safe.
+        # Decide next trial (random or bias-corrected) and pre-set odor once safe.
+        pc.v.odor_preset_done = False
         do_other_ITI_logic()
 
-    # Optional: extend ITI if still licking rewarded spout in the first half (task trials only)
+    # Optional: extend ITI if still licking rewarded spout in the first half
     elif (
-        (not pc.v.is_probe_trial)
-        and pc.v.outcome
+        pc.v.outcome
         and (
             ((event == "left_poke") and pc.v.choice == "left")
             or ((event == "right_poke") and pc.v.choice == "right")

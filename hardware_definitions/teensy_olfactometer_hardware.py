@@ -13,7 +13,7 @@ left_port       = Poke(board.port_5, rising_event="left_poke",   falling_event="
 center_port     = Poke(board.port_6, rising_event="center_poke", falling_event="center_poke_out")
 speaker         = Audio_board(board.port_3)
 thermistor_sync = Frame_logger(pin=board.BNC_1,        rising_event="therm_sync_ON")
-#camera_sync     = Frame_logger(pin=board.port_4.DIO_A, rising_event="cam_ON")
+camera_sync     = Frame_logger(pin=board.port_4.DIO_A, rising_event="cam_ON")
 
 # Final valve TTL to Teensy (BNC -> BNC cable). BNC_2 is a digital output.
 final_valve = Digital_output(pin=board.BNC_2)
@@ -47,3 +47,6 @@ odor_A = OlfSerialValve(fixed_valve_num=1)
 
 # B is variable; you will set odor_B.set_valve(<n>) from the task before calling odor_B.on()
 odor_B = OlfSerialValve()
+
+#rwd_durations = [59, 54]  # Reward delivery duration (ms) [left, right].
+rwd_durations = [79, 72]  # Reward delivery duration (ms) [left, right]. 5mL for a 1x duration multiplier
