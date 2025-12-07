@@ -7,7 +7,7 @@ from hardware_definition import right_port, left_port, center_port, final_valve,
 
 #----------------------------VARIABLES TO EDIT------------------------------------
 pc.v.n_allowed_rwds = 220  # total per session (assuming a 5uL reward size)
-pc.v.required_center_hold_duration = 225
+pc.v.required_center_hold_duration = 300
 #---------------------------------------------------------------------------------
 
 # Tone frequency (plays whenever center LED is ON)

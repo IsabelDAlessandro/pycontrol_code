@@ -5,8 +5,8 @@ from hardware_definition import right_port, left_port, center_port, final_valve,
 
 #----------------------------VARIABLES TO EDIT------------------------------------
 pc.v.required_center_hold_duration = 300
-pc.v.n_allowed_rwds = 300
-pc.v.bias_correction = False   # True to enable adaptive side probabilities
+pc.v.n_allowed_rwds = 160
+pc.v.bias_correction = True   # True to enable adaptive side probabilities
 #---------------------------------------------------------------------------------
 
 
