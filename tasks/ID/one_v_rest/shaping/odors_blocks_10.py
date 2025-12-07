@@ -6,8 +6,8 @@ from hardware_definition import right_port, left_port, center_port, final_valve,
 # =======================
 
 #----------------------------VARIABLES TO EDIT------------------------------------
-pc.v.n_allowed_rwds = 220  # total per session (assuming a 5uL reward size)
-pc.v.required_center_hold_duration = 225
+pc.v.n_allowed_rwds = 500  # total per session (assuming a 5uL reward size)
+pc.v.required_center_hold_duration = 300
 #---------------------------------------------------------------------------------
 
 # Tone frequency (plays whenever center LED is ON)
@@ -152,7 +152,7 @@ def run_end():
     left_port.SOL.off()
     center_port.LED.off()
     disable_odor_valves()
-    speaker.off()
+    #speaker.off()
     pc.print("SESSION_DONE")
 
 # State-independent behaviour.
@@ -183,7 +183,7 @@ def wait_for_center_poke(event):
     if event == "entry":
         # Cue trial availability
         center_port.LED.on()
-        speaker.sine(TONE_FREQ_1)  # tone ON with LED
+        #speaker.sine(TONE_FREQ_1)  # tone ON with LED
         pc.v.entry_time = pc.get_current_time()  # start early-error buffer
 
     elif (
@@ -191,7 +191,7 @@ def wait_for_center_poke(event):
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
-        speaker.off()  # tone OFF with LED
+        #speaker.off()  # tone OFF with LED
         disable_odor_valves()
         pc.v.n_early_errors += 1
         pc.v.timeout_duration = pc.v.timeout_early_ms
@@ -211,7 +211,7 @@ def deliver_odor(event):
     if event == "entry":
         # LED OFF cues timing; tone OFF with LED
         center_port.LED.off()
-        speaker.off()
+        #speaker.off()
         # TTL opens final valve; Teensy already on selected A or B (random) from ITI
         final_valve.on()
         pc.timed_goto_state("wait_for_side_poke", pc.v.odor_delivery_duration)

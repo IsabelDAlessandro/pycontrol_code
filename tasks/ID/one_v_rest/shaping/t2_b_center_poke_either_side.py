@@ -6,7 +6,7 @@ from hardware_definition import right_port, left_port, center_port, final_valve,
 #1s ITI, 300ms early error buffer, 150-300 reward hold duration
 
 #----------------------------VARIABLES TO EDIT------------------------------------
-pc.v.n_allowed_rwds = 220  # total per session (assuming a 5uL reward size)
+pc.v.n_allowed_rwds = 240  # total per session (assuming a 5uL reward size)
 #---------------------------------------------------------------------------------
 
 # State machine
