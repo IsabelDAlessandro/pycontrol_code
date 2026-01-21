@@ -12,10 +12,6 @@ initial_state = "wait_for_center_poke"
 
 # Shaping params (change these as required per mouse)
 pc.v.required_center_hold_duration = 75  # ms
-pc.v.reward_duration_multiplier = 1.0
-pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
-pc.v.timeout_duration = 1 * pc.second  # timeout for wrong trials (in addition to ITI)
-pc.v.n_allowed_rwds = 200  # total per session
 pc.v.early_error_buffer_time = 500  # ms
 
 # Odor parameters
@@ -27,7 +23,10 @@ pc.v.final_valve_flush_duration = 500
 
 # General Parameters.
 pc.v.session_duration = 1 * pc.hour  # Session duration.
-
+pc.v.reward_duration_multiplier = 1.0
+pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration. (increase this overtime from 1 to 3)***
+pc.v.timeout_duration = 1 * pc.second  # timeout for wrong trials (in addition to ITI)
+pc.v.n_allowed_rwds = 200  # total per session
 
 # Variables.
 pc.v.entry_time = 0
@@ -100,8 +99,9 @@ def wait_for_center_poke(event):
     
     # If mouse pokes either side port *after* the early-error buffer
     # has elapsed, then timeout and restart the trial.
+    # kaf disabled 112425 maybe, jonah added in to get his mice to sniff i think
     elif (
-        ((pc.get_current_time() - pc.v.entry_time) > pc.v.early_error_buffer_time)
+         ((pc.get_current_time() - pc.v.entry_time) > pc.v.early_error_buffer_time)
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
@@ -188,12 +188,15 @@ def inter_trial_interval(event):
         pc.v.n_total_trials += 1
         pc.print_variables(["n_total_trials", "n_correct_trials", "mov_ave_correct", "required_center_hold_duration"])
         
-        # Auto-increase center hold duration for shaping
-        if (
-            ((pc.v.n_rewards == 25) or (pc.v.n_rewards == 50))
-            and (pc.v.required_center_hold_duration < 300)
-        ):
-            pc.v.required_center_hold_duration += 75
+        # Auto-increase center hold duration for shaping #this isn't working right
+        # when the animal is stuck at >75 trials, it keeps increasing by 75 (79 had 225)
+        #kaf removed this 112425 because there isn't a catch for wrong outcomes
+        #if (
+        #    
+        #    ((pc.v.n_rewards == 75) or (pc.v.n_rewards == 150))
+        #    and (pc.v.required_center_hold_duration < 300)
+        #):
+        #    pc.v.required_center_hold_duration += 75
 
         # Do any other required ITI logic in this function
         do_other_ITI_logic()

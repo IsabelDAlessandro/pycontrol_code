@@ -4,7 +4,7 @@ call C:\Users\datta\anaconda3\Scripts\activate.bat pycontrol
 REM --- CONFIG ---
 set PYTHON=python
 set BRIDGE=C:\Users\datta\Documents\code\pycontrol_code\tools\olf_bridge_tail.py
-set ROOT=C:\Users\datta\Documents\2AFC\data\Isabel\training_box_bottom
+set ROOT=C:\Users\datta\Documents\2AFC\data
 set OLF_PORT=COM5
 set LOGDIR=C:\Users\datta\Documents\code\pycontrol_code\tools\logs
 

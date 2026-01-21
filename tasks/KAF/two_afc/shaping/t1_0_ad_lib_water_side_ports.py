@@ -1,6 +1,8 @@
 import pyControl.utility as pc
 from hardware_definition import right_port, left_port, center_port, rwd_durations
 
+#don't use the multiplier - this would cause some unknown amount if the opening is nonlinear
+#or you can figure out the appropriate calibration for the multiplier if desperate
 # State machine
 states = ["wait_for_poke", "left_reward", "right_reward", "inter_trial_interval"]
 
@@ -12,7 +14,7 @@ initial_state = "wait_for_poke"
 # Parameters.
 pc.v.session_duration = 1 * pc.hour  # Session duration.
 # pc.v.rwd_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
-pc.v.rwd_durations = rwd_durations
+pc.v.rwd_durations = rwd_durations #set in left and right training rigs independently. need to test that this is giving same reward size
 pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
 pc.v.reward_dur_multiplier = 1  # adjust per mouse; increase if not interested
 

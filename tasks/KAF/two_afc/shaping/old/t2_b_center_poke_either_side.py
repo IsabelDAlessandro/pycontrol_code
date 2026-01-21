@@ -1,39 +1,33 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, thermistor_sync, rwd_durations
+from hardware_definition import right_port, left_port, center_port, final_valve, thermistor_sync, camera_sync
 
 # Goal: teach mouse to poke in the center port first. Anything else while
 # the light is on is bad. Then can go to either side for a reward.
+#1s ITI, 300ms early error buffer, 150-300 reward hold duration
 
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
-events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held", "therm_sync_ON"]
+events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held","therm_sync_ON","cam_ON"]
 initial_state = "wait_for_center_poke"
 
-# Shaping params (change these as required per mouse)
-pc.v.required_center_hold_duration = 75  # ms
-pc.v.reward_duration_multiplier = 1.0
-pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
-pc.v.timeout_duration = 1 * pc.second  # timeout for wrong trials (in addition to ITI)
-pc.v.n_allowed_rwds = 200  # total per session
-pc.v.early_error_buffer_time = 500  # ms
-
 # Odor parameters
-# pc.v.reward_durations = [30, 30]  # Reward delivery duration (ms) [left, right].
-pc.v.reward_durations = rwd_durations
+pc.v.required_center_hold_duration = 150  # ms
 pc.v.odor_delivery_duration = 500
 pc.v.final_valve_flush_duration = 500
 
-
-# General Parameters.
+# General Parameters.n_al
 pc.v.session_duration = 1 * pc.hour  # Session duration.
-
+pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
+pc.v.reward_duration_multiplier = 0.75
+pc.v.ITI_duration = 2 * pc.second  # Inter trial interval duration.
+pc.v.timeout_duration = 1 * pc.second  # timeout for wrong trials (in addition to ITI)
+pc.v.n_allowed_rwds = 240  # total per session
 
 # Variables.
 pc.v.entry_time = 0
 pc.v.n_total_trials = 0
 pc.v.mov_ave_correct = 0  # moving avg of last 10 trials
-
 
 # Reward variables (updated / used in "is_rewarded")
 pc.v.choice = "right"
@@ -54,7 +48,7 @@ def run_end():
     left_port.SOL.off()
     center_port.LED.off()
     disable_odor_valves()
-
+    pc.print("SESSION_DONE")
     # Do whatever else...save data maybe?
     pass
 
@@ -100,8 +94,9 @@ def wait_for_center_poke(event):
     
     # If mouse pokes either side port *after* the early-error buffer
     # has elapsed, then timeout and restart the trial.
+    #impose window in which the mouse must respond after the light turns on 
     elif (
-        ((pc.get_current_time() - pc.v.entry_time) > pc.v.early_error_buffer_time)
+        ((pc.get_current_time() - pc.v.entry_time) > 300)
         and (event == "left_poke" or event == "right_poke")
     ):
         center_port.LED.off()
@@ -198,16 +193,16 @@ def inter_trial_interval(event):
         # Do any other required ITI logic in this function
         do_other_ITI_logic()
     
-    # # If mouse is still licking the reward, let it keep going until it's done.
-    # elif (
-    #     pc.v.outcome
-    #     and (
-    #             ((event == "left_poke") and pc.v.choice == "left")
-    #             or ((event == "right_poke") and pc.v.choice == "right")
-    #         )
-    #     and ((pc.get_current_time() - pc.v.entry_time) < (pc.v.ITI_duration/2))
-    # ):
-    #     pc.reset_timer("finish_ITI", pc.v.ITI_duration)
+    # If mouse is still licking the reward, let it keep going until it's done.
+    elif (
+        pc.v.outcome
+        and (
+                ((event == "left_poke") and pc.v.choice == "left")
+                or ((event == "right_poke") and pc.v.choice == "right")
+            )
+        and ((pc.get_current_time() - pc.v.entry_time) < (pc.v.ITI_duration/2))
+    ):
+        pc.reset_timer("finish_ITI", pc.v.ITI_duration)
 
     elif event == "finish_ITI":
         pc.goto_state("wait_for_center_poke")

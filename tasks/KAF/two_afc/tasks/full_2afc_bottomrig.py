@@ -1,133 +1,97 @@
 # full_one_v_rest.py
-#
-# One-vs-rest odor discrimination with bias correction.
-#
-# Organization:
-# - Odors and their manifold valves + rewarded side live in pc.v.odors.
-# - LEFT-rewarded odors (typically just A) are the "target" class.
-# - RIGHT-rewarded odors (B1–B4) are the "rest" class.
-# - Odor valves are controlled directly via "#OLF:oN" / "#OLF:cN" prints,
-#   which the bridge script forwards to the Teensy olfactometer.
-# - final_valve TTL gates actual odor delivery, with a flush period
-#   before presetting the next trial's odor.
-
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, thermistor_sync, speaker, rwd_durations
+from hardware_definition import right_port, left_port, center_port, final_valve, odor_A, odor_B, thermistor_sync, speaker,rwd_durations
 
-# ---------------------------- VARIABLES TO EDIT --------------------------------
+
+#----------------------------VARIABLES TO EDIT------------------------------------
 pc.v.required_center_hold_duration = 300
-pc.v.n_allowed_rwds = 240
+pc.v.n_allowed_rwds = 200
 pc.v.bias_correction = True   # True to enable adaptive side probabilities
-# -------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
+
 
 # =======================
 # ===== CONFIG ==========
 # =======================
 
-# Odor table: name / manifold valve / rewarded side.
-# For one-vs-rest:
-#   - A (valve 1) is LEFT-rewarded (target)
-#   - B1–B4 (valves 2–5) are RIGHT-rewarded (rest)
-pc.v.odors = [
-    {'name': 'A',  'valve': 1, 'side': 'left'},
-    {'name': 'B1', 'valve': 2, 'side': 'right'},
-    {'name': 'B2', 'valve': 3, 'side': 'right'},
-    {'name': 'B3', 'valve': 4, 'side': 'right'},
-    {'name': 'B4', 'valve': 5, 'side': 'right'},
-]
 
-pc.v.current_odor       = None   # dict from pc.v.odors
-pc.v.current_valve      = None   # int valve number
-pc.v.current_odor_name  = ""     # convenience for logging
+# Non-target odors (B options) — EDIT to match Teensy manifold mapping.
+# One of these channels is chosen at random on RIGHT-rewarded trials during ITI.
+pc.v.non_target_odors = [2]
+pc.v.current_odor = None       # 'A', 'B', or None (to de-duplicate serial prints)
+pc.v.B_current_valve = None    # chosen per trial when B is used
 
 # Reward sizing
 pc.v.reward_duration_multiplier = 1
-pc.v.choice_window_ms           = 5000
+pc.v.choice_window_ms = 5000
 
 # Shaping / timing
-pc.v.early_error_buffer_duration = 300    # ms grace after entering wait_for_center_poke
-pc.v.odor_delivery_duration      = 500    # ms final valve ON before choice
-pc.v.final_valve_flush_duration  = 1000   # ms TTL close delay to flush
+pc.v.early_error_buffer_duration   = 300     # not in t3, ms grace after entering wait_for_center_poke
+pc.v.odor_delivery_duration        = 500     # ms final valve ON before choice
+pc.v.final_valve_flush_duration    = 1000     # ms TTL close delay to flush
 
 # Session / ITI / timeouts
 pc.v.session_duration = 1 * pc.hour
-pc.v.reward_durations = rwd_durations     # [left, right] ms
+pc.v.reward_durations = rwd_durations
 pc.v.ITI_duration     = 3 * pc.second
-pc.v.timeout_duration = 2 * pc.second     # generic default; overridden as needed
-pc.v.timeout_early_ms = 500               # penalty for EARLY side pokes
-pc.v.timeout_wrong_ms = 2000              # penalty for WRONG choice
+pc.v.timeout_duration = 1.5 * pc.second        # generic default; will be overridden below as needed
+pc.v.timeout_early_ms = 500                  # penalty for EARLY side pokes (during wait_for_center_poke)
+pc.v.timeout_wrong_ms = 1500                 # penalty for WRONG choice after valid center hold
 
-# Bias correction
-pc.v.p_left        = 0.5      # current probability to schedule a LEFT-rewarded trial
-pc.v.max_side_prob = 0.75     # cap either side to 0.75 (min becomes 0.25)
-pc.v.bias_step     = 0.01     # step size when adapting p_left
-pc.v.bias_window   = 20       # number of recent trials to estimate bias over
-pc.v.choice_hist   = []       # rolling list of 'L'/'R' choices (<= bias_window)
+# Bias correction (OFF by default)
+pc.v.p_left          = 0.5      # current probability to schedule a LEFT-rewarded trial
+pc.v.max_side_prob   = 0.75     # cap either side to 0.75 (min becomes 0.25)
+pc.v.bias_step       = 0.01     # step size when adapting p_left
+pc.v.bias_window     = 20       # number of recent trials to estimate bias over
+pc.v.choice_hist     = []       # rolling list of 'L'/'R' choices (<= bias_window)
 
 # Stats / trackers
-pc.v.entry_time          = 0
-pc.v.n_total_trials      = 0
-pc.v.n_early_errors      = 0
-pc.v.mov_ave_correct     = 0
-pc.v.overall_ave_correct = 0
-pc.v.choice              = "right"
-pc.v.rewarded_side       = "left" if (pc.random() > 0.5) else "right"  # starts left or right
-pc.v.outcome             = 0
-pc.v.n_correct_trials    = 0
-pc.v.n_rewards           = 0
+pc.v.entry_time        = 0
+pc.v.n_total_trials    = 0
+pc.v.n_early_errors    = 0
+pc.v.mov_ave_correct   = 0
+pc.v.overall_ave_correct = 0 #excludes early errors
+pc.v.choice            = "right"
+pc.v.rewarded_side = "left" if (pc.random() > 0.5) else "right"  #starts left or right
+pc.v.outcome           = 0
+pc.v.n_correct_trials  = 0
+pc.v.n_rewards         = 0
 pc.v.ave_correct_tracker = pc.OnlineMovingAverage(10)
-pc.v.odor_preset_done    = False
-
-# =======================
-# === BRIDGE HELPERS ====
-# =======================
-
-def olf_open(valve_num):
-    # Open manifold valve valve_num (prefill odor line).
-    pc.print("#OLF:o{}".format(int(valve_num)))
-
-def olf_close(valve_num):
-    # Close manifold valve valve_num.
-    pc.print("#OLF:c{}".format(int(valve_num)))
+pc.v.odor_preset_done = False
 
 # =======================
 # ===== ODOR LOGIC ======
 # =======================
 
-def _odors_for_side(side):
-    return [o for o in pc.v.odors if o['side'] == side]
+def _choose_B_for_this_trial_if_needed():
+    if pc.v.B_current_valve is None:
+        pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
+        odor_B.set_valve(pc.v.B_current_valve)
 
-def choose_odor_for_rewarded_side():
-    """
-    Given pc.v.rewarded_side ('left' or 'right'), choose a specific odor
-    instance from pc.v.odors with that side and store it in pc.v.current_odor.
-    """
-    candidates = _odors_for_side(pc.v.rewarded_side)
-    if not candidates:
-        pc.v.current_odor = None
-        pc.v.current_valve = None
-        pc.v.current_odor_name = ""
-        return
-
-    pc.v.current_odor = pc.choice(candidates)
-    pc.v.current_valve = pc.v.current_odor['valve']
-    pc.v.current_odor_name = pc.v.current_odor['name']
-
+# A = left (fixed), B = right (random among non_target_odors)
 def set_odor_valves():
-    """
-    Preset odor routing for the upcoming trial, based on pc.v.current_odor.
-    Called during ITI, once final valve is definitely closed.
-    """
-    if pc.v.current_valve is not None:
-        olf_open(pc.v.current_valve)
+    # Defensive: ensure a clean slate every time we preset the next odor.
+    odor_A.off()
+    odor_B.off()
+
+    if pc.v.rewarded_side == "left":
+        # Left = A
+        if pc.v.current_odor != 'A':
+            pc.v.current_odor = 'A'
+        odor_A.on()
+    else:
+        # Right = B (pick per-trial)
+        pc.v.B_current_valve = pc.choice(pc.v.non_target_odors)
+        odor_B.set_valve(pc.v.B_current_valve)
+        if pc.v.current_odor != 'B':
+            pc.v.current_odor = 'B'
+        odor_B.on()
+
 
 def disable_odor_valves():
-    """
-    Close the currently active odor valve.
-    Called after odor delivery, before/while flushing.
-    """
-    if pc.v.current_valve is not None:
-        olf_close(pc.v.current_valve)
+    odor_A.off()
+    odor_B.off()
+    pc.v.current_odor = None
 
 # ===========================
 # ===== TRIAL SELECTION =====
@@ -171,9 +135,8 @@ def check_update_rewarded_side():
         pc.v.rewarded_side = "left" if pc.withprob(pc.v.p_left) else "right"
     else:
         pc.v.rewarded_side = "left" if pc.withprob(0.5) else "right"
-
-    # Once side is chosen, pick a specific odor for that side.
-    choose_odor_for_rewarded_side()
+    # Reset B choice so the next right-rewarded trial picks a fresh non-target
+    pc.v.B_current_valve = None
     return
 
 def is_rewarded(side):
@@ -189,7 +152,7 @@ def is_rewarded(side):
 
 def do_other_ITI_logic():
     _record_choice_for_bias()
-    check_update_rewarded_side()      # sets rewarded_side and current_odor
+    check_update_rewarded_side()
     pc.publish_event("set_odor_valves_for_trial")
 
 # =======================
@@ -226,8 +189,7 @@ def run_start():
     final_valve.off()
     pc.v.odor_preset_done = False
     pc.set_timer("session_timer", pc.v.session_duration)
-    # Decide first trial & odor and preset when safe.
-    do_other_ITI_logic()
+    pc.publish_event("set_odor_valves_for_trial")
 
 def run_end():
     right_port.SOL.off()
@@ -327,7 +289,7 @@ def wait_for_side_poke(event):
             pc.v.timeout_duration = pc.v.timeout_wrong_ms
             pc.goto_state("timeout")
 
-    elif event == "choice_window_over":
+    elif event == "choice_window_over": #there are extra trials because of this requirement
         pc.v.outcome = 0
         pc.v.ave_correct_tracker.add(0)
         pc.goto_state("inter_trial_interval")
@@ -361,7 +323,7 @@ def inter_trial_interval(event):
         pc.print_variables([
             "n_total_trials", "n_correct_trials", "n_early_errors",
             "mov_ave_correct", "overall_ave_correct",
-            "rewarded_side", "current_odor_name", "choice", "outcome", "p_left"
+            "rewarded_side", "choice", "outcome", "p_left"
         ])
 
         # Decide next trial (random or bias-corrected) and pre-set odor once safe.

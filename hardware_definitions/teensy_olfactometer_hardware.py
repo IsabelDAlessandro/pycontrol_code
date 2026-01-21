@@ -48,5 +48,6 @@ odor_A = OlfSerialValve(fixed_valve_num=1)
 # B is variable; you will set odor_B.set_valve(<n>) from the task before calling odor_B.on()
 odor_B = OlfSerialValve()
 
+rwd_durations = [37, 37]
 #rwd_durations = [59, 54]  # Reward delivery duration (ms) [left, right].
-rwd_durations = [79, 72]  # Reward delivery duration (ms) [left, right]. 5mL for a 1x duration multiplier
+#Srwd_durations = [79, 72]  # Reward delivery duration (ms) [left, right]. 5mL for a 1x duration multiplier

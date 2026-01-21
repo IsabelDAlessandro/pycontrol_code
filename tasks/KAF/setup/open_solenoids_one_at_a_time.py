@@ -1,7 +1,13 @@
 # A script for calibrating solenoids, derived from hardware_test.py in the examples.
 
 from pyControl.utility import *
-from hardware_definition import left_port, right_port, center_port, rwd_durations
+from hardware_definition import left_port, right_port, center_port
+
+# Instantiate Devices.
+# board = Breakout_1_2()
+# left_poke = Poke(board.port_3, rising_event="left_poke", falling_event="left_poke_out")
+# center_poke = Poke(board.port_4, rising_event="center_poke", falling_event="center_poke_out")
+# right_poke = Poke(board.port_2, rising_event="right_poke", falling_event="right_poke_out")
 
 # States and events.
 
@@ -9,10 +15,8 @@ states = [
     "init_state",
     "left_active",
     "right_active",
-    "left_calibration",
-    "left_wait",
-    "right_calibration",
-    "right_wait",
+    "left_open",
+    "right_open",
 ]
 
 events = [
@@ -25,8 +29,7 @@ events = [
 initial_state = "init_state"
 
 # Variables
-v.rwd_durations = rwd_durations  # Reward delivery duration (ms) [left, right].
-v.reward_duration_multiplier = 1
+v.rwd_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 v.n_rwds_for_calibration = 200
 v.current_rwd = 0  # Current reward number
 
@@ -62,7 +65,7 @@ def left_active(event):
     elif event == "exit":
         left_port.LED.off()
     elif event == "center_poke":
-        goto_state("left_calibration")
+        goto_state("left_open")
 
 
 def right_active(event):
@@ -72,41 +75,22 @@ def right_active(event):
     elif event == "exit":
         right_port.LED.off()
     elif event == "center_poke":
-        goto_state("right_calibration")
+        goto_state("right_open")
 
 
-def left_calibration(event):
+def left_open(event):
     # Trigger left solenoid while center poke IR beam remains broken.
     if event == "entry":
-        if v.current_rwd >= v.n_rwds_for_calibration:
-            # Stop calibration after n rewards.
-            timed_goto_state("init_state", 100)
-        else:
-            left_port.SOL.on()
-            v.current_rwd += 1
-            timed_goto_state("left_wait", v.reward_duration_multiplier * v.rwd_durations[0])
-    elif event == "exit":
+        left_port.SOL.on()
+    elif event == "center_poke_out":
         left_port.SOL.off()
+        goto_state("init_state")
 
-def left_wait(event):
+
+def right_open(event):
+    # Trigger left solenoid while center poke IR beam remains broken.
     if event == "entry":
-        timed_goto_state("left_calibration", 200)  # pause between each rwd delivery to allow the solenoid to fully close
-
-
-def right_calibration(event):
-     # Trigger right solenoid while center poke IR beam remains broken.
-    if event == "entry":
-        if v.current_rwd >= v.n_rwds_for_calibration:
-            # Stop calibration after n rewards.
-            timed_goto_state("init_state", 100)
-        else:
-            right_port.SOL.on()
-            v.current_rwd += 1
-            timed_goto_state("right_wait", v.reward_duration_multiplier * v.rwd_durations[1])
-    elif event == "exit":
+        right_port.SOL.on()
+    elif event == "center_poke_out":
         right_port.SOL.off()
-
-
-def right_wait(event):
-    if event == "entry":
-        timed_goto_state("right_calibration", 200)  # pause between each rwd delivery to allow the solenoid to fully close
+        goto_state("init_state")
