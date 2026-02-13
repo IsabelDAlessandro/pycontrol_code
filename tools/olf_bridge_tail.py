@@ -49,7 +49,7 @@ def extract_cmd(line):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True, help="Root folder containing subject subfolders with .tsv session files")
-    ap.add_argument("--olf", default="COM5", help="Teensy COM port")
+    ap.add_argument("--olf", default="COM10", help="Teensy COM port")
     ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--scan_sec", type=float, default=0.5, help="How often to rescan for a newer session file")
     args = ap.parse_args()
@@ -95,7 +95,7 @@ def main():
             line = f.readline()
             if not line:
                 # no new data
-                time.sleep(0.05)
+                time.sleep(0.0005)
                 continue
 
             last_size = f.tell()

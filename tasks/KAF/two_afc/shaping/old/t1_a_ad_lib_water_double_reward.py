@@ -1,5 +1,5 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, rwd_durations
+from hardware_definition import right_port, left_port, thermistor_sync, camera_sync
 
 # State machine
 states = ["wait_for_poke", "left_reward", "right_reward", "inter_trial_interval"]
@@ -10,8 +10,7 @@ initial_state = "wait_for_poke"
 
 # Parameters.
 pc.v.session_duration = 0.5 * pc.hour  # Session duration.
-pc.v.reward_durations = rwd_durations
-#pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
+pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
 pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
 pc.v.reward_dur_multiplier = 1  # adjust per mouse; increase if not interested
 pc.v.max_rewards = 150
@@ -29,7 +28,7 @@ def run_end():
     # Turn off all hardware outputs.
     right_port.SOL.off()
     left_port.SOL.off()
-    pc.print("SESSION_DONE")
+
     # Do whatever else...save data maybe?
     pass
 
@@ -76,4 +75,5 @@ def inter_trial_interval(event):
 def all_states(event):
     # When 'session_timer' event occurs stop framework to end session.
     if event == "session_timer":
+        pc.print("SESSION_DONE")
         pc.stop_framework()

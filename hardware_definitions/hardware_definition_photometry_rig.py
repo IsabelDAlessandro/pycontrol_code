@@ -1,8 +1,7 @@
 # hardware_definition.py
 
 from devices import Breakout_1_2, Poke, Digital_output, Audio_board, Frame_logger
-import pycontrol as pc
-from pyControl.utility import set_timer, random
+from pyControl.utility import set_timer, randint, publish_event
 
 board = Breakout_1_2()
 
@@ -12,12 +11,12 @@ left_port       = Poke(board.port_3, rising_event="left_poke",   falling_event="
 center_port     = Poke(board.port_6, rising_event="center_poke", falling_event="center_poke_out")
 
 sync_out = Digital_output(pin=board.BNC_1)
-camera_out = Digital_output(pin=board.BNC_2)
+#camera_out = Digital_output(pin=board.BNC_2)
 
 
 #SYNC PULSE 
 SYNC_PULSE_MS = 10
-CAM_PULSE_MS  = 10
+#CAM_PULSE_MS  = 10
 
 ACQ_PULSE_MODE = "random"   # "fixed" or "random"
 ACQ_INTERVAL_MS = 1000      # used if mode=="fixed"
@@ -25,7 +24,7 @@ ACQ_MIN_MS = 500            # used if mode=="random"
 ACQ_MAX_MS = 1500           # used if mode=="random"
 
 ACQ_SYNC_EVENT = "acq_sync_pulse"
-ACQ_CAM_EVENT  = "acq_cam_pulse"
+#ACQ_CAM_EVENT  = "acq_cam_pulse"
 
 def _olf(cmd: str) -> None:
     print(cmd)
@@ -114,7 +113,7 @@ def _next_acq_interval_ms():
     if ACQ_PULSE_MODE == "fixed":
         return int(ACQ_INTERVAL_MS)
     # random in [min, max]
-    return int(random.randint(ACQ_MIN_MS, ACQ_MAX_MS))
+    return int(randint(ACQ_MIN_MS, ACQ_MAX_MS))
 
 def start_acq_pulses(immediate=True):
     """
@@ -126,13 +125,13 @@ def start_acq_pulses(immediate=True):
 
     if immediate:
         # fire once at start (optional)
-        sync_out.pulse(SYNC_PULSE_MS);   pc.publish_event("sync_pulse")
-        camera_out.pulse(CAM_PULSE_MS); pc.publish_event("cam_pulse")
+        sync_out.pulse(SYNC_PULSE_MS)
+        #camera_out.pulse(CAM_PULSE_MS)
 
     # schedule first tick events
     dt = _next_acq_interval_ms()
     set_timer(ACQ_SYNC_EVENT, dt)
-    set_timer(ACQ_CAM_EVENT,  dt)
+    #set_timer(ACQ_CAM_EVENT,  dt)
 
 def stop_acq_pulses():
     """
@@ -153,13 +152,13 @@ def handle_acq_pulse_events(event):
 
     if event == ACQ_SYNC_EVENT:
         sync_out.pulse(SYNC_PULSE_MS)
-        pc.publish_event("sync_pulse")  # log-friendly alias
+        
         set_timer(ACQ_SYNC_EVENT, _next_acq_interval_ms())
 
-    elif event == ACQ_CAM_EVENT:
-        camera_out.pulse(CAM_PULSE_MS)
-        pc.publish_event("cam_pulse")   # log-friendly alias
-        set_timer(ACQ_CAM_EVENT, _next_acq_interval_ms())
+    # elif event == ACQ_CAM_EVENT:
+    #     camera_out.pulse(CAM_PULSE_MS)
+        
+    #     set_timer(ACQ_CAM_EVENT, _next_acq_interval_ms())
 
         
 # Shared reward durations (if you export these here)

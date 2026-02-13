@@ -1,13 +1,10 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, rwd_durations
-#from hardware_definition import right_port, left_port, center_port,  rwd_durations
+from hardware_definition import right_port, left_port, center_port, final_valve, thermistor_sync
+
 # Goal: teach mouse to poke in the center port first. Anything else while
 # the light is on is bad. Then can go to either side for a reward.
 #3s ITI, 300ms early error buffer, 300 reward hold duration
 
-#----------------------------VARIABLES TO EDIT------------------------------------
-pc.v.n_allowed_rwds = 500  # total per session (assuming a 5uL reward size)
-#---------------------------------------------------------------------------------
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
@@ -21,11 +18,11 @@ pc.v.final_valve_flush_duration = 500
 
 # General Parameters.n_al
 pc.v.session_duration = 1 * pc.hour  # Session duration.
-pc.v.reward_durations = rwd_durations
-#pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
-pc.v.reward_duration_multiplier = 1
+pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
+pc.v.reward_duration_multiplier = 0.75
 pc.v.ITI_duration = 3 * pc.second  # Inter trial interval duration.
 pc.v.timeout_duration = 1 * pc.second  # timeout for wrong trials (in addition to ITI)
+pc.v.n_allowed_rwds = 240  # total per session
 
 # Variables.
 pc.v.entry_time = 0

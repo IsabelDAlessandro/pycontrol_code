@@ -1,31 +1,28 @@
 import pyControl.utility as pc
-from hardware_definition import right_port, left_port, center_port, final_valve, rwd_durations
-#from hardware_definition import right_port, left_port, center_port,  rwd_durations
+from hardware_definition import right_port, left_port, center_port, final_valve, thermistor_sync, camera_sync
+
 # Goal: teach mouse to poke in the center port first. Anything else while
 # the light is on is bad. Then can go to either side for a reward.
-#3s ITI, 300ms early error buffer, 300 reward hold duration
+#1s ITI, no early error buffer, 75-150 reward hold duration
 
-#----------------------------VARIABLES TO EDIT------------------------------------
-pc.v.n_allowed_rwds = 500  # total per session (assuming a 5uL reward size)
-#---------------------------------------------------------------------------------
 
 # State machine
 states = ["wait_for_center_poke", "deliver_odor", "wait_for_side_poke", "left_reward", "right_reward", "inter_trial_interval", "timeout"]
-events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held","therm_sync_ON"]
+events = ["center_poke", "right_poke", "left_poke", "center_poke_out", "right_poke_out", "left_poke_out", "session_timer", "finish_ITI", "close_final_valve", "center_poke_held","therm_sync_ON","cam_ON"]
 initial_state = "wait_for_center_poke"
 
 # Odor parameters
-pc.v.required_center_hold_duration = 300  # ms
+pc.v.required_center_hold_duration = 75  # ms
 pc.v.odor_delivery_duration = 500
 pc.v.final_valve_flush_duration = 500
 
 # General Parameters.n_al
 pc.v.session_duration = 1 * pc.hour  # Session duration.
-pc.v.reward_durations = rwd_durations
-#pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
-pc.v.reward_duration_multiplier = 1
-pc.v.ITI_duration = 3 * pc.second  # Inter trial interval duration.
+pc.v.reward_durations = [47, 54]  # Reward delivery duration (ms) [left, right].
+pc.v.reward_duration_multiplier = 0.75
+pc.v.ITI_duration = 1 * pc.second  # Inter trial interval duration.
 pc.v.timeout_duration = 1 * pc.second  # timeout for wrong trials (in addition to ITI)
+pc.v.n_allowed_rwds = 240  # total per session
 
 # Variables.
 pc.v.entry_time = 0
@@ -95,16 +92,6 @@ def wait_for_center_poke(event):
         pc.v.entry_time = pc.get_current_time()  # Start early-error buffer
         set_odor_valves()
     
-    # If mouse pokes either side port *after* the early-error buffer
-    # has elapsed, then timeout and restart the trial.
-    #impose window in which the mouse must respond after the light turns on 
-    elif (
-        ((pc.get_current_time() - pc.v.entry_time) > 300)
-        and (event == "left_poke" or event == "right_poke")
-    ):
-        center_port.LED.off()
-        disable_odor_valves()
-        pc.goto_state("timeout")
 
     # If ms is still licking at reward port, then restart the 
     # early-error buffer when it leaves the side port.
@@ -189,7 +176,7 @@ def inter_trial_interval(event):
         # Auto-increase center hold duration for shaping
         if (
             ((pc.v.n_rewards == 25) or (pc.v.n_rewards == 50))
-            and (pc.v.required_center_hold_duration < 300)
+            and (pc.v.required_center_hold_duration < 150)
         ):
             pc.v.required_center_hold_duration += 75
 

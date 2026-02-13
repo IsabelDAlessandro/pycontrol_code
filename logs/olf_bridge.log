@@ -1,0 +1,22 @@
+[OK] Connected Teensy @ COM7 115200 baud
+[INFO] Following: C:\Users\TDT\Documents\2AFC\test-2026-01-21-154516.tsv
+[INFO] Switching to newer file: C:\Users\TDT\Documents\2AFC\test-2026-01-21-155026.tsv
+[FWD] o1
+[FWD] c1
+[FWD] o2
+[FWD] c2
+[FWD] o3
+[FWD] c3
+[FWD] o1
+[FWD] c1
+[FWD] o2
+[FWD] c2
+[FWD] o3
+[FWD] c3
+[FWD] o1
+[FWD] c1
+[FWD] o2
+[FWD] c2
+[FWD] o3
+[FWD] c3
+^C
